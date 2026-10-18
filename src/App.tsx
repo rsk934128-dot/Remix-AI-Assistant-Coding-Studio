@@ -19,7 +19,8 @@ import {
   Pin,
   PinOff,
   Globe,
-  BarChart3
+  BarChart3,
+  Mail
 } from 'lucide-react';
 import { ProjectMetricsModal } from './components/ProjectMetricsModal';
 import { ChatMessage, ChatSession, AssistantMode } from './types';
@@ -31,6 +32,7 @@ import { ChatInput } from './components/ChatInput';
 import { ArchitectureModal } from './components/ArchitectureModal';
 import { CodePreviewModal } from './components/CodePreviewModal';
 import { ExportModal } from './components/ExportModal';
+import { EmailComposerModal } from './components/EmailComposerModal';
 import { ShareModal } from './components/ShareModal';
 import { HostingDiagnosticModal } from './components/HostingDiagnosticModal';
 import { CitizenServicesModal } from './components/CitizenServicesModal';
@@ -49,6 +51,11 @@ import { TTSSettingsModal } from './components/TTSSettingsModal';
 import { FounderProfileModal } from './components/FounderProfileModal';
 import { LandingPageVideoShowcase } from './components/LandingPageVideoShowcase';
 import { UniversalAppsConnectModal, UniversalTab } from './components/UniversalAppsConnectModal';
+import { MobileProgramsHubModal } from './components/MobileProgramsHubModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
+import { UniversalShareReceiverModal } from './components/UniversalShareReceiverModal';
+import { GlobalDropZone } from './components/GlobalDropZone';
+import { parseIncomingShareParams, InboundSharedContent } from './utils/shareUtils';
 import { useAuth } from './context/AuthContext';
 import { saveSessionToCloud, loadSessionsFromCloud, deleteSessionFromCloud } from './lib/firebase';
 import workspaceHeroImg from './assets/images/ai_workspace_hero_1790066671032.jpg';
@@ -113,6 +120,110 @@ export default function App() {
   const [ttsSettingsModalOpen, setTtsSettingsModalOpen] = useState(false);
   const [founderProfileModalOpen, setFounderProfileModalOpen] = useState(false);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
+  const [mobileProgramsHubOpen, setMobileProgramsHubOpen] = useState(false);
+  const [isChatInputFocused, setIsChatInputFocused] = useState(false);
+  const [emailComposerOpen, setEmailComposerOpen] = useState(false);
+  const [emailComposerConfig, setEmailComposerConfig] = useState<{
+    recipient?: string;
+    subject?: string;
+    body?: string;
+    language?: 'bn' | 'en';
+  }>({});
+
+  // Inbound Web Share Target and External Content Ingest state
+  const [shareReceiverOpen, setShareReceiverOpen] = useState(false);
+  const [incomingSharedItem, setIncomingSharedItem] = useState<InboundSharedContent | null>(null);
+  const [sharedAlertToast, setSharedAlertToast] = useState<string | null>(null);
+
+  // Detect incoming share target parameters from URL (PWA Web Share Target)
+  useEffect(() => {
+    try {
+      const search = window.location.search;
+      if (!search) return;
+      const params = new URLSearchParams(search);
+      const parsed = parseIncomingShareParams(params);
+      if (parsed) {
+        setIncomingSharedItem(parsed);
+        setShareReceiverOpen(true);
+        setSharedAlertToast('বহিরাগত প্ল্যাটফর্ম থেকে তথ্য পাওয়া গেছে!');
+        setTimeout(() => setSharedAlertToast(null), 5000);
+        // Clean URL search parameters without reloading page
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    } catch (e) {
+      console.warn('Error reading incoming share parameters:', e);
+    }
+  }, []);
+
+  // Global clipboard paste listener for external images and links
+  useEffect(() => {
+    const handleWindowPaste = (e: ClipboardEvent) => {
+      // Check if image file was pasted
+      if (e.clipboardData?.files && e.clipboardData.files.length > 0) {
+        const file = e.clipboardData.files[0];
+        if (file.type.startsWith('image/')) {
+          e.preventDefault();
+          const sizeFormatted =
+            file.size < 1024 * 1024
+              ? `${(file.size / 1024).toFixed(1)} KB`
+              : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setIncomingSharedItem({
+              type: 'photo',
+              fileName: file.name || 'ক্লিপবোর্ড_ছবি.png',
+              fileSize: sizeFormatted,
+              mimeType: file.type,
+              fileDataUrl: event.target?.result as string,
+            });
+            setShareReceiverOpen(true);
+            setSharedAlertToast('ক্লিপবোর্ড থেকে ছবি শেয়ার হাবে যুক্ত হয়েছে');
+            setTimeout(() => setSharedAlertToast(null), 4000);
+          };
+          reader.readAsDataURL(file);
+          return;
+        }
+      }
+
+      // If user isn't typing in an input and pasted an external URL
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          (activeEl as HTMLElement).isContentEditable);
+      if (!isInput && e.clipboardData) {
+        const text = e.clipboardData.getData('text/plain');
+        if (text && text.trim().length > 8) {
+          const clean = text.trim();
+          if (clean.startsWith('http://') || clean.startsWith('https://')) {
+            setIncomingSharedItem({
+              type: 'link',
+              url: clean,
+            });
+            setShareReceiverOpen(true);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handleWindowPaste);
+    return () => window.removeEventListener('paste', handleWindowPaste);
+  }, []);
+
+  const handleOpenEmailComposer = (config?: {
+    recipient?: string;
+    subject?: string;
+    body?: string;
+    language?: 'bn' | 'en';
+  }) => {
+    if (config) {
+      setEmailComposerConfig(config);
+    }
+    setEmailComposerOpen(true);
+  };
+
   const [universalAppsModalConfig, setUniversalAppsModalConfig] = useState<{
     isOpen: boolean;
     tab: UniversalTab;
@@ -851,6 +962,7 @@ export default function App() {
         onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
         onOpenTTSSettings={() => setTtsSettingsModalOpen(true)}
         onOpenFounderProfile={() => setFounderProfileModalOpen(true)}
+        onOpenEmailComposer={() => handleOpenEmailComposer()}
         onOpenShare={handleOpenShareModal}
         onSelectMode={setMode}
         currentMode={mode}
@@ -869,6 +981,8 @@ export default function App() {
           onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
           onOpenTTSSettings={() => setTtsSettingsModalOpen(true)}
           onOpenFounderProfile={() => setFounderProfileModalOpen(true)}
+          onOpenEmailComposer={() => handleOpenEmailComposer()}
+          onOpenMobilePrograms={() => setMobileProgramsHubOpen(true)}
           onNewChat={handleNewChat}
           onClearChat={handleClearChat}
           onExportChat={handleExportChat}
@@ -946,6 +1060,16 @@ export default function App() {
                   >
                     <ShieldCheck className="w-4 h-4 text-teal-200 group-hover:scale-110 transition-transform" />
                     <span>A-Z জনসেবা ও তথ্য নির্দেশিকা</span>
+                  </button>
+
+                  <button
+                    id="hero-email-composer-btn"
+                    onClick={() => handleOpenEmailComposer()}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="প্রফেশনাল ইমেইল কম্পোজার (বাংলা ও ইংরেজি ইমেইল ড্রাফট, এডিট, এক্সপোর্ট ও কপি)"
+                  >
+                    <Mail className="w-4 h-4 text-teal-200 group-hover:scale-110 transition-transform" />
+                    <span>ইমেইল ড্রাফটার (Email Composer)</span>
                   </button>
 
                   <button
@@ -1237,19 +1361,27 @@ export default function App() {
           )}
         </div>
 
-        {/* Input Bar */}
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          onSend={(text) => handleSendMessage(text)}
-          onStop={handleStopGenerating}
-          isGenerating={isGenerating}
-          enableSearch={enableSearch}
-          setEnableSearch={setEnableSearch}
-          mode={mode}
-          setMode={setMode}
-          onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
-        />
+        {/* Input Bar with bottom padding for mobile sticky nav */}
+        <div className={`transition-all duration-200 shrink-0 relative z-20 ${
+          isChatInputFocused
+            ? 'pb-1'
+            : 'pb-[calc(3.75rem+env(safe-area-inset-bottom,8px))] md:pb-0'
+        }`}>
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            onSend={(text) => handleSendMessage(text)}
+            onStop={handleStopGenerating}
+            isGenerating={isGenerating}
+            enableSearch={enableSearch}
+            setEnableSearch={setEnableSearch}
+            mode={mode}
+            setMode={setMode}
+            onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
+            onFocus={() => setIsChatInputFocused(true)}
+            onBlur={() => setIsChatInputFocused(false)}
+          />
+        </div>
       </div>
 
       {/* Architecture Guide Modal */}
@@ -1370,6 +1502,18 @@ export default function App() {
         initialTab={universalAppsModalConfig.tab}
         onSendToChat={(prompt) => handleSendMessage(prompt)}
         onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
+        onOpenEmailComposer={() => handleOpenEmailComposer()}
+      />
+
+      {/* Professional Email Composer & Drafter Modal */}
+      <EmailComposerModal
+        isOpen={emailComposerOpen}
+        onClose={() => setEmailComposerOpen(false)}
+        initialRecipient={emailComposerConfig.recipient}
+        initialSubject={emailComposerConfig.subject}
+        initialBody={emailComposerConfig.body}
+        initialLanguage={emailComposerConfig.language}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
       />
 
       {/* Recharts Project Metrics & Chat History Analytics Modal */}
@@ -1379,6 +1523,39 @@ export default function App() {
         sessions={sessions}
         activeSessionId={activeSession?.id}
         onSelectSession={setActiveSessionId}
+      />
+
+      {/* Mobile Sticky Thumb Navigation Bar */}
+      <MobileBottomNav
+        onOpenMobilePrograms={() => setMobileProgramsHubOpen(true)}
+        onOpenEmailComposer={() => handleOpenEmailComposer()}
+        onOpenCitizenServices={() => setCitizenModalOpen(true)}
+        onToggleSidebar={() => setSidebarOpen((o) => !o)}
+        onScrollToChat={() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          const textarea = document.getElementById('chat-textarea-input');
+          if (textarea) textarea.focus();
+        }}
+        hasActiveMessages={activeSession?.messages.length > 0}
+        isInputFocused={isChatInputFocused}
+      />
+
+      {/* Mobile Programs & All Tools Hub Modal */}
+      <MobileProgramsHubModal
+        isOpen={mobileProgramsHubOpen}
+        onClose={() => setMobileProgramsHubOpen(false)}
+        onOpenEmailComposer={() => handleOpenEmailComposer()}
+        onOpenUniversalApps={handleOpenUniversalApps}
+        onOpenCitizenServices={() => setCitizenModalOpen(true)}
+        onOpenFreelanceAgent={() => setFreelanceAgentModalOpen(true)}
+        onOpenMetrics={() => setMetricsModalOpen(true)}
+        onOpenLiveLocation={() => setLiveLocationModalOpen(true)}
+        onOpenArchitecture={() => setArchitectureModalOpen(true)}
+        onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
+        onOpenTTSSettings={() => setTtsSettingsModalOpen(true)}
+        onOpenFounderProfile={() => setFounderProfileModalOpen(true)}
+        onOpenExportChat={() => handleExportChat(activeSession)}
+        onOpenShareModal={handleOpenShareModal}
       />
 
       {/* PWA Offline Indicator */}

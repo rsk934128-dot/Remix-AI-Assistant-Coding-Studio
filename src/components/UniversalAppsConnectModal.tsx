@@ -28,7 +28,9 @@ import {
   Share2,
   Terminal,
   Network,
-  AlertCircle
+  AlertCircle,
+  TrendingUp,
+  LineChart
 } from 'lucide-react';
 import { useMiniBrowser } from '../context/MiniBrowserContext';
 
@@ -39,6 +41,7 @@ interface UniversalAppsConnectModalProps {
   onClose: () => void;
   onSendToChat?: (prompt: string) => void;
   onOpenGoogleDrive?: () => void;
+  onOpenEmailComposer?: () => void;
   initialTab?: UniversalTab;
 }
 
@@ -165,6 +168,7 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
   onClose,
   onSendToChat,
   onOpenGoogleDrive,
+  onOpenEmailComposer,
   initialTab = 'apps',
 }) => {
   const miniBrowser = useMiniBrowser();
@@ -388,15 +392,18 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
   return (
     <div
       id="universal-apps-connect-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
     >
-      <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden text-stone-900 dark:text-stone-100">
+      <div className="relative w-full max-w-5xl h-full sm:h-auto sm:max-h-[92vh] flex flex-col rounded-none sm:rounded-3xl bg-white dark:bg-stone-900 border-0 sm:border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden text-stone-900 dark:text-stone-100">
         
+        {/* Mobile Drag Handle */}
+        <div className="w-12 h-1.5 bg-stone-300 dark:bg-stone-700 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
+
         {/* Top Header */}
-        <div className="px-5 sm:px-7 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/80 flex items-center justify-between gap-4 shrink-0">
+        <div className="px-4 sm:px-7 py-3 sm:py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/80 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-emerald-600/25 shrink-0">
-              <Globe className="w-5 h-5" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-emerald-600/25 shrink-0">
+              <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -407,7 +414,7 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
                   Open Apps • Gmail • Message • GitHub • Connect
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 truncate mt-0.5">
+              <h2 className="text-sm sm:text-lg font-bold text-stone-900 dark:text-stone-100 truncate mt-0.5">
                 সকল অ্যাপস ওপেন, মেসেজিং ও GitHub কানেক্টর
               </h2>
             </div>
@@ -416,10 +423,11 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-stone-200/80 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-stone-200/80 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 hover:text-stone-900 dark:hover:text-white transition-colors cursor-pointer text-xs font-semibold flex items-center gap-1.5 min-h-[40px]"
               title="বন্ধ করুন (Close)"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
+              <span className="hidden sm:inline">বন্ধ করুন</span>
             </button>
           </div>
         </div>
@@ -769,6 +777,49 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
                     </a>
                   </div>
                 </div>
+
+                {/* 7. ForTrade Pro Trading Terminal (PWA) */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-emerald-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-md shadow-emerald-600/30">
+                        <TrendingUp className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+                        Trading Terminal PWA
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>ForTrade Pro Trading Terminal</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      ফোরট্রেড প্রো ট্রেডিং টার্মিনাল — লাইভ ফরেক্স, স্টক ও ক্রিপ্টো চার্ট, টেকনিক্যাল ইন্ডিকেটর এবং রিয়েল-টাইম মার্কেট অর্ডার ম্যানেজমেন্ট।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        miniBrowser.openBrowser('https://fortrade-pro-trading-terminal-dev-d-nine.vercel.app/?source=pwa', 'web');
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>মিনি ব্রাউজারে চালান</span>
+                    </button>
+                    <a
+                      href="https://fortrade-pro-trading-terminal-dev-d-nine.vercel.app/?source=pwa"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors"
+                      title="নতুন ট্যাবে ForTrade Pro খুলুন"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -780,10 +831,26 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
                 <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm">
                   <Mail className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-rose-950 dark:text-rose-200">
-                    Gmail ও অফিশিয়াল ইমেইল কম্পোজার
-                  </h3>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <h3 className="text-sm font-bold text-rose-950 dark:text-rose-200">
+                      Gmail ও অফিশিয়াল ইমেইল কম্পোজার
+                    </h3>
+                    {onOpenEmailComposer && (
+                      <button
+                        type="button"
+                        id="open-full-email-composer-from-tab-btn"
+                        onClick={() => {
+                          onClose();
+                          onOpenEmailComposer();
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>পূর্ণাঙ্গ ইমেইল স্টুডিও খুলুন</span>
+                      </button>
+                    )}
+                  </div>
                   <p className="text-xs text-rose-800/80 dark:text-rose-300/80 mt-0.5 leading-relaxed">
                     নিচে প্রাপক, বিষয় ও বার্তা লিখুন অথবা এআই টেমপ্লেট বেছে নিন। এক ক্লিকে সরাসরি আপনার জিমেইল অ্যাপের কম্পোজ উইন্ডো ওপেন হবে এবং ড্রাফট স্বয়ংক্রিয়ভাবে ফিল হবে।
                   </p>

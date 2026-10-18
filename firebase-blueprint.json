@@ -70,6 +70,10 @@
         "pinnedAt": {
           "type": "number",
           "description": "Timestamp in milliseconds when session was pinned"
+        },
+        "enableSearch": {
+          "type": "boolean",
+          "description": "Whether Google Search grounding is enabled for this session"
         }
       },
       "required": ["id", "userId", "title", "mode", "createdAt", "updatedAt"]

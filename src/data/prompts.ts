@@ -11,6 +11,15 @@ export const QUICK_PROMPTS: QuickPrompt[] = [
     icon: 'Globe',
   },
   {
+    id: 'p-fortrade-terminal',
+    category: 'research',
+    titleBn: 'ForTrade Pro ট্রেডিং টার্মিনাল',
+    titleEn: 'ForTrade Pro Trading Terminal',
+    prompt: 'ForTrade Pro Trading Terminal (https://fortrade-pro-trading-terminal-dev-d-nine.vercel.app/?source=pwa) এর চার্ট অ্যানালাইসিস, ফরেক্স ও ক্রিপ্টো ট্রেডিং ফিচার এবং টার্মিনালটি ওপেন করার সরাসরি লিঙ্ক দাও।',
+    descriptionBn: 'লাইভ ফরেক্স, স্টক ও ক্রিপ্টো চার্ট টার্মিনাল',
+    icon: 'TrendingUp',
+  },
+  {
     id: 'p-send-gmail-message',
     category: 'writing',
     titleBn: 'জিমেইল ও মেসেজ পাঠানো',

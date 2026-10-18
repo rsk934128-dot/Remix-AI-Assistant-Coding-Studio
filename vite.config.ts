@@ -137,6 +137,15 @@ export default defineConfig(() => {
               purpose: 'maskable',
             },
           ],
+          share_target: {
+            action: '/?share_target=1',
+            method: 'GET',
+            params: {
+              title: 'title',
+              text: 'text',
+              url: 'url',
+            },
+          },
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MiB to accommodate bundles

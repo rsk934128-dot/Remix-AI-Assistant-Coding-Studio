@@ -30,7 +30,9 @@ import {
   UserCheck,
   Pin,
   PinOff,
-  BarChart3
+  BarChart3,
+  Mail,
+  Cpu
 } from 'lucide-react';
 import { AssistantMode } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -51,6 +53,9 @@ interface HeaderProps {
   onOpenGoogleDrive?: () => void;
   onOpenTTSSettings?: () => void;
   onOpenFounderProfile?: () => void;
+  onOpenEmailComposer?: () => void;
+  onOpenMobilePrograms?: () => void;
+  onOpenShareReceiver?: () => void;
   onNewChat: () => void;
   onClearChat: () => void;
   onExportChat: () => void;
@@ -79,6 +84,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenGoogleDrive,
   onOpenTTSSettings,
   onOpenFounderProfile,
+  onOpenEmailComposer,
+  onOpenMobilePrograms,
+  onOpenShareReceiver,
   onNewChat,
   onClearChat,
   onExportChat,
@@ -305,17 +313,44 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Header Actions */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 shrink-0">
+        {/* Universal Inbound Share Hub (Receive Files, Photos, Links, Notes) */}
+        {onOpenShareReceiver && (
+          <button
+            id="header-open-share-receiver-btn"
+            type="button"
+            onClick={onOpenShareReceiver}
+            className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 transition-all shadow-2xs active:scale-95 cursor-pointer"
+            title="বহিরাগত প্ল্যাটফর্ম থেকে ফাইল, ছবি, লিংক ও লেখা আনুন (Universal Share Hub)"
+          >
+            <Share2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span className="hidden sm:inline">শেয়ার হাব</span>
+          </button>
+        )}
+
+        {/* Mobile Programs Launcher Button */}
+        {onOpenMobilePrograms && (
+          <button
+            id="mobile-header-programs-btn"
+            type="button"
+            onClick={onOpenMobilePrograms}
+            className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 transition-all shadow-2xs active:scale-95 cursor-pointer"
+            title="সকল প্রোগ্রাম ও টুলকিট খুলুন (Mobile Programs Hub)"
+          >
+            <Cpu className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>প্রোগ্রাম</span>
+          </button>
+        )}
+
         {onOpenUniversalApps && (
           <button
             id="open-universal-apps-btn"
             onClick={() => onOpenUniversalApps('apps')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 dark:from-blue-950/60 dark:to-indigo-950/60 dark:hover:from-blue-900/60 dark:hover:to-indigo-900/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors shadow-xs cursor-pointer"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 dark:from-blue-950/60 dark:to-indigo-950/60 dark:hover:from-blue-900/60 dark:hover:to-indigo-900/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors shadow-xs cursor-pointer"
             title="সকল অ্যাপস ওপেন, জিমেইল, মেসেজিং ও GitHub কানেক্টর হাব"
           >
             <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span className="hidden md:inline">সকল অ্যাপস ও কানেক্ট</span>
-            <span className="md:hidden hidden sm:inline">অ্যাপস</span>
+            <span>সকল অ্যাপস ও কানেক্ট</span>
           </button>
         )}
 
@@ -323,12 +358,11 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="open-metrics-btn"
             onClick={onOpenMetrics}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-colors shadow-xs cursor-pointer"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-colors shadow-xs cursor-pointer"
             title="Recharts চালিত চ্যাট ও প্রজেক্ট মেট্রিক্স অ্যানালিটিক্স ড্যাশবোর্ড"
           >
             <BarChart3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span className="hidden md:inline">মেট্রিক্স ও গ্রাফ</span>
-            <span className="md:hidden hidden sm:inline">মেট্রিক্স</span>
+            <span>মেট্রিক্স ও গ্রাফ</span>
           </button>
         )}
 
@@ -336,11 +370,11 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="open-freelance-agent-btn"
             onClick={onOpenFreelanceAgent}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-xs"
+            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-xs"
             title="২৪/৭ রিমোট জব ও ফ্রিল্যান্স এআই এজেন্ট স্টুডিও"
           >
             <Bot className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="hidden md:inline">রিমোট জব এজেন্ট</span>
+            <span>রিমোট জব এজেন্ট</span>
           </button>
         )}
 
@@ -348,7 +382,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="open-citizen-services-btn"
             onClick={onOpenCitizenServices}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800 transition-colors shadow-xs"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800 transition-colors shadow-xs"
             title="মোবাইল নম্বর ডিরেক্টরি, ঠিকানা ও এ টু জেড জনসেবা কেন্দ্র"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
@@ -359,22 +393,22 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="open-architecture-guide-btn"
           onClick={onOpenArchitecture}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition-colors shadow-xs"
+          className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition-colors shadow-xs"
           title="নিজস্ব AI অ্যাপ কীভাবে বানাবেন তার বিস্তারিত রোডম্যাপ"
         >
           <Layers className="w-3.5 h-3.5 text-amber-500" />
-          <span className="hidden sm:inline">AI আর্কিটেকচার ম্যাপ</span>
+          <span>AI আর্কিটেকচার ম্যাপ</span>
         </button>
 
         {onOpenHostingDiagnostic && (
           <button
             id="open-hosting-diagnostic-btn"
             onClick={onOpenHostingDiagnostic}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-xs"
+            className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-xs"
             title="হোস্টিং ও জেমিনি এআই ডায়াগনস্টিক"
           >
             <Server className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="hidden sm:inline">এআই স্ট্যাটাস ও হোস্টিং</span>
+            <span>এআই স্ট্যাটাস</span>
           </button>
         )}
 
@@ -382,11 +416,11 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="open-tts-settings-header-btn"
             onClick={onOpenTTSSettings}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-750 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition-colors shadow-xs cursor-pointer"
+            className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-750 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition-colors shadow-xs cursor-pointer"
             title="সহকারীর পড়ার গতি ও কণ্ঠ সেটিংস (TTS Speed & Voice Settings)"
           >
             <Volume2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="hidden xl:inline">স্পিচ গতি</span>
+            <span>স্পিচ গতি</span>
           </button>
         )}
 
@@ -394,18 +428,32 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="open-founder-profile-header-btn"
             onClick={onOpenFounderProfile}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 transition-colors shadow-xs cursor-pointer"
-            title="প্রতিষ্ঠাতা ও সুপার অ্যাডমিন প্রোফাইল (Sheikh Farid)"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 dark:from-amber-950/70 dark:to-amber-900/60 dark:hover:from-amber-900/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
+            title="স্মার্ট ডিজিটাল প্রোফাইল আইডি কার্ড দেখুন ও তৈরি/আপডেট করুন (Sheikh Farid - Super Admin)"
           >
             <Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-            <span className="hidden xl:inline">প্রতিষ্ঠাতা</span>
+            <span className="hidden sm:inline">প্রোফাইল আইডি</span>
+            <span className="sm:hidden">আইডি</span>
+          </button>
+        )}
+
+        {onOpenEmailComposer && (
+          <button
+            id="open-email-composer-header-btn"
+            onClick={onOpenEmailComposer}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/50 dark:hover:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-800 transition-colors shadow-xs cursor-pointer"
+            title="প্রফেশনাল ইমেইল কম্পোজার ও ড্রাফটার (Email Composer & Exporter)"
+          >
+            <Mail className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            <span className="hidden lg:inline">ইমেইল ড্রাফটার</span>
+            <span className="lg:hidden">ইমেইল</span>
           </button>
         )}
 
         <button
           id="header-new-chat-btn"
           onClick={onNewChat}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs active:scale-95"
           title="নতুন চ্যাট শুরু করুন"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -424,12 +472,11 @@ export const Header: React.FC<HeaderProps> = ({
               sessionTitle: activeSessionTitle,
             });
           }}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 bg-blue-50/90 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 border border-blue-300 dark:border-blue-800 transition-colors shadow-xs cursor-pointer"
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 bg-blue-50/90 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 border border-blue-300 dark:border-blue-800 transition-colors shadow-xs cursor-pointer"
           title="মিনি গুগল ব্রাউজার খুলুন (লাইভ ওয়েব সার্চ, ইউটিউব, গুগল রিসোর্স)"
         >
           <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-          <span className="hidden sm:inline">মিনি গুগল ব্রাউজার</span>
-          <span className="sm:hidden">গুগল</span>
+          <span>মিনি ব্রাউজার</span>
         </button>
 
         {/* PWA Install Button */}
@@ -690,42 +737,18 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        {/* Autonomous Remote AI Freelance Agent button */}
-        {onOpenFreelanceAgent && (
-          <button
-            id="freelance-agent-header-btn"
-            onClick={onOpenFreelanceAgent}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 transition-all text-xs font-semibold cursor-pointer"
-            title="২৪ ঘণ্টা স্বয়ংক্রিয় রিমোট জব ও ফ্রিল্যান্স এআই এজেন্ট স্টুডিও"
-          >
-            <Bot className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">রিমোট জব এজেন্ট</span>
-          </button>
-        )}
-
         {/* Google Drive Workspace button */}
         {onOpenGoogleDrive && (
           <button
             id="google-drive-header-btn"
             onClick={onOpenGoogleDrive}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/25 transition-all text-xs font-semibold cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/25 transition-all text-xs font-semibold cursor-pointer"
             title="Google Drive ক্লাউড ফাইল ম্যানেজার ও স্টোরেজ"
           >
             <HardDrive className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden sm:inline">Google Drive</span>
+            <span>Google Drive</span>
           </button>
         )}
-
-        {/* In-App Mini Google Web Browser button */}
-        <button
-          id="mini-google-browser-header-btn"
-          onClick={() => miniBrowser.openBrowser()}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/25 transition-all text-xs font-semibold cursor-pointer"
-          title="মিনি গুগল ওয়েব ব্রাউজার খুলুন (লাইভ গুগল সার্চ ও ওয়েব মিডিয়া)"
-        >
-          <Globe className="w-3.5 h-3.5 text-blue-500" />
-          <span className="hidden sm:inline">মিনি ব্রাউজার</span>
-        </button>
 
         {/* Quick In-App Music / Video Player button */}
         <button
@@ -741,15 +764,15 @@ export const Header: React.FC<HeaderProps> = ({
               });
             }
           }}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/25 transition-all text-xs font-semibold cursor-pointer"
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/25 transition-all text-xs font-semibold cursor-pointer"
           title="ইন-অ্যাপ ইউটিউব মিউজিক প্লেয়ার খুলুন"
         >
           <Youtube className="w-3.5 h-3.5 fill-current" />
-          <span className="hidden sm:inline">মিউজিক প্লেয়ার</span>
+          <span>মিউজিক প্লেয়ার</span>
         </button>
 
         {/* Cloud Sync & Firebase User Auth */}
-        <UserAuthButton onSyncAll={onSyncAll} compact={true} />
+        <UserAuthButton onSyncAll={onSyncAll} onOpenProfile={onOpenFounderProfile} compact={true} />
 
         <button
           id="toggle-dark-mode-btn"

@@ -33,7 +33,8 @@ import {
   Mail,
   FolderGit2,
   Users,
-  BarChart3
+  BarChart3,
+  TrendingUp
 } from 'lucide-react';
 import { ChatSession, AssistantMode } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -62,6 +63,7 @@ interface SidebarProps {
   onOpenGoogleDrive?: () => void;
   onOpenTTSSettings?: () => void;
   onOpenFounderProfile?: () => void;
+  onOpenEmailComposer?: () => void;
   onOpenShare?: (config?: { shareType?: 'app' | 'session' }) => void;
   onSelectMode: (mode: AssistantMode) => void;
   currentMode: AssistantMode;
@@ -86,6 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenGoogleDrive,
   onOpenTTSSettings,
   onOpenFounderProfile,
+  onOpenEmailComposer,
   onOpenShare,
   onSelectMode,
   currentMode,
@@ -348,6 +351,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </button>
                   )}
 
+                  {/* Professional Email Composer & Drafter */}
+                  {onOpenEmailComposer && (
+                    <button
+                      id="sidebar-prog-email-composer"
+                      onClick={() => {
+                        onOpenEmailComposer();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-teal-500/15 via-emerald-500/10 to-transparent hover:from-teal-500/25 border border-teal-500/30 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Mail className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+                              প্রফেশনাল ইমেইল কম্পোজার
+                            </p>
+                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-teal-600 text-white uppercase">
+                              Draft
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-teal-700 dark:text-teal-400 truncate">
+                            বাংলা ও ইংরেজিতে ড্রাফট, এক্সপোর্ট ও কপি
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
                   {/* GitHub Flagship Hub (rsk934128-dot) */}
                   {onOpenUniversalApps && (
                     <button
@@ -401,6 +436,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <ChevronRight className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
                     </button>
                   )}
+
+                  {/* ForTrade Pro Trading Terminal (PWA) */}
+                  <button
+                    id="sidebar-prog-fortrade-terminal"
+                    onClick={() => {
+                      miniBrowser.openBrowser('https://fortrade-pro-trading-terminal-dev-d-nine.vercel.app/?source=pwa', 'web');
+                      if (window.innerWidth < 768) onClose();
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent hover:from-emerald-500/25 border border-emerald-500/30 text-left transition-all group cursor-pointer shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                        <TrendingUp className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+                            ForTrade Pro ট্রেডিং টার্মিনাল
+                          </p>
+                          <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-600 text-white uppercase">
+                            PWA
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-emerald-700 dark:text-emerald-400 truncate">
+                          লাইভ ফরেক্স, স্টক ও ক্রিপ্টো ট্রেডিং চার্ট
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
 
                   {/* Freelance Agent */}
                   {onOpenFreelanceAgent && (
@@ -668,11 +733,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         </div>
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-amber-950 dark:text-amber-200 truncate flex items-center gap-1.5">
-                            <span>প্রতিষ্ঠাতা ও সুপার অ্যাডমিন</span>
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-amber-500/20 text-amber-700 dark:text-amber-300">Owner</span>
+                            <span>ডিজিটাল স্মার্ট প্রোফাইল আইডি কার্ড</span>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">VERIFIED</span>
                           </p>
                           <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 truncate">
-                            শেখ ফরিদ (হোটেল আল শেখ ফরিদ)
+                            শেখ ফরিদ (Sheikh Farid) • আইডি তৈরি ও আপডেট
                           </p>
                         </div>
                       </div>

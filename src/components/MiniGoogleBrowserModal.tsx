@@ -41,6 +41,7 @@ import {
   Mail,
   FileCode,
   Languages,
+  TrendingUp,
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useMiniBrowser } from '../context/MiniBrowserContext';
@@ -275,6 +276,15 @@ export const MiniGoogleBrowserModal: React.FC<MiniGoogleBrowserModalProps> = ({
       textColor: 'text-amber-400',
       action: 'drive',
       primaryActionLabel: onOpenGoogleDrive ? 'ইন-অ্যাপ ড্রাইভ' : 'ড্রাইভ খুলুন',
+    },
+    {
+      title: 'ForTrade Pro Trading Terminal (PWA)',
+      description: 'রিয়েল-টাইম ফরেক্স, ক্রিপ্টো ও স্টক মার্কেট লাইভ চার্ট, টেকনিক্যাল অ্যানালাইসিস ও ট্রেডিং টার্মিনাল।',
+      url: 'https://fortrade-pro-trading-terminal-dev-d-nine.vercel.app/?source=pwa',
+      icon: TrendingUp,
+      bg: 'bg-emerald-500/10',
+      textColor: 'text-emerald-400',
+      primaryActionLabel: 'টার্মিনাল ওপেন',
     },
     {
       title: 'Google Docs (গুগল ডক্স)',

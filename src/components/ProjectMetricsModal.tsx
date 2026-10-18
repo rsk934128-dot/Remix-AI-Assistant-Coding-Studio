@@ -17,7 +17,8 @@ import {
   RefreshCw,
   FolderGit2,
   CheckCircle2,
-  Cpu
+  Cpu,
+  ArrowLeft
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -394,31 +395,44 @@ export const ProjectMetricsModal: React.FC<ProjectMetricsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-stone-950/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center p-0 sm:p-4 bg-stone-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-5xl h-full sm:h-auto sm:max-h-[92vh] flex flex-col rounded-none sm:rounded-2xl bg-white dark:bg-stone-900 border-0 sm:border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden">
+        {/* Mobile Drag Indicator Handle */}
+        <div className="w-12 h-1.5 bg-stone-300 dark:bg-stone-700 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
+
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-900/60">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-900/60 shrink-0 gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80 shrink-0">
               <BarChart3 className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-lg font-bold text-stone-900 dark:text-stone-100 truncate">
                 প্রজেক্ট মেট্রিক্স ও অ্যানালিটিক্স ড্যাশবোর্ড
               </h2>
-              <p className="text-xs text-stone-500 dark:text-stone-400">
+              <p className="text-[11px] sm:text-xs text-stone-500 dark:text-stone-400 truncate">
                 Recharts চালিত রিয়েল-টাইম চ্যাট ব্যবহার, সেশন অ্যানালিটিক্স ও GitHub প্রজেক্ট পরিসংখ্যান
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl hover:bg-stone-200/60 dark:hover:bg-stone-800 text-stone-500 dark:text-stone-400 transition-colors"
-            title="বন্ধ করুন"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={onClose}
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-750 text-stone-800 dark:text-stone-200 text-xs font-semibold transition-all cursor-pointer border border-stone-200 dark:border-stone-700 min-h-[38px]"
+              title="চ্যাটে ফিরে যান (Back)"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>ফিরে যান</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl hover:bg-stone-200/60 dark:hover:bg-stone-800 text-stone-500 dark:text-stone-400 transition-colors min-w-[38px] min-h-[38px] flex items-center justify-center"
+              title="বন্ধ করুন"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab & Filter Bar */}

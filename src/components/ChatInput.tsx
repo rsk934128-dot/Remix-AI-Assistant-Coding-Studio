@@ -21,7 +21,8 @@ import {
   Maximize2,
   HardDrive,
   Loader2,
-  Check
+  Check,
+  Share2
 } from 'lucide-react';
 import { AssistantMode } from '../types';
 import { useMediaRecorderVoice, VoiceLanguage } from '../hooks/useMediaRecorderVoice';
@@ -42,6 +43,9 @@ interface ChatInputProps {
   mode: AssistantMode;
   setMode: (mode: AssistantMode) => void;
   onOpenGoogleDrive?: () => void;
+  onOpenShareReceiver?: () => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -55,6 +59,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   mode,
   setMode,
   onOpenGoogleDrive,
+  onOpenShareReceiver,
+  onFocus,
+  onBlur,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -122,13 +129,27 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const sizeFormatted =
+      file.size < 1024 * 1024
+        ? `${(file.size / 1024).toFixed(1)} KB`
+        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+    if (file.type.startsWith('image/')) {
+      setInput(
+        (prev) =>
+          `${prev ? prev + '\n\n' : ''}[সংযুক্ত ছবি: ${file.name} (${sizeFormatted})]\nএই ছবির মূল দৃশ্যপট, টেক্সট (OCR), অবজেক্ট ও প্রাসঙ্গিক তথ্য বিস্তারিত বাংলায় বিশ্লেষণ করো এবং দরকারী পরামর্শ দাও:`
+      );
+      e.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
       if (text) {
         setInput(
-          prev =>
-            `${prev ? prev + '\n\n' : ''}[ফাইল: ${file.name}]\n\`\`\`\n${text.slice(0, 10000)}\n\`\`\`\nএই ফাইলের কোড/তথ্য বিশ্লেষণ করো:`
+          (prev) =>
+            `${prev ? prev + '\n\n' : ''}[ফাইল: ${file.name} (${sizeFormatted})]\n\`\`\`\n${text.slice(0, 12000)}\n\`\`\`\nএই ফাইলের কোড/তথ্য বিস্তারিত বিশ্লেষণ করো:`
         );
       }
     };
@@ -318,8 +339,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </div>
         )}
 
-        {/* Input Text Box */}
-        <div className={`relative rounded-2xl border bg-white dark:bg-stone-950 shadow-xs transition-all ${
+        {/* Input Text Box Container */}
+        <div className={`relative rounded-2xl border bg-white dark:bg-stone-950 shadow-xs transition-all flex flex-col ${
           isRecording 
             ? 'border-rose-500 dark:border-rose-500 ring-2 ring-rose-500/30 shadow-[0_0_16px_rgba(244,63,94,0.25)]'
             : 'border-stone-300 dark:border-stone-700 focus-within:border-emerald-500 dark:focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500/20'
@@ -331,32 +352,53 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={() => {
+              onFocus?.();
+            }}
+            onBlur={() => {
+              onBlur?.();
+            }}
             placeholder={
               isRecording
                 ? 'কথা বলুন... আপনার কণ্ঠস্বর রেকর্ড হচ্ছে এবং ছেড়ে দিলে টেক্সট আকারে রূপান্তর হবে...'
                 : 'গান বা ইউটিউব ভিডিও লিঙ্ক, ওয়েবসাইট সন্ধান, কোডিং বা যেকোনো প্রশ্ন লিখুন...'
             }
-            className="w-full resize-none bg-transparent px-4 pt-3.5 pb-11 text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none leading-relaxed"
+            className="w-full resize-none bg-transparent px-3.5 pt-3 pb-1.5 text-sm text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none leading-relaxed min-h-[44px]"
           />
 
-          {/* Bottom Bar inside Input */}
-          <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
+          {/* Action Bar inside Input Card (Never absolute, guaranteed in-flow & never overflows screen) */}
+          <div className="flex items-center justify-between gap-1 sm:gap-2 px-2.5 pb-2 pt-1 border-t border-stone-100/90 dark:border-stone-850/80 min-w-0">
+            {/* Left Action Buttons (Scrolls gracefully if needed on tiny screens, never pushes Send button) */}
+            <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-1 overflow-x-auto no-scrollbar py-0.5">
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".txt,.js,.ts,.tsx,.jsx,.py,.html,.css,.json,.md"
+                accept="image/*,.txt,.js,.ts,.tsx,.jsx,.py,.html,.css,.json,.md,.csv,.pdf,.doc,.docx"
                 onChange={handleFileUpload}
                 className="hidden"
               />
               <button
                 id="attach-file-btn"
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
-                title="টেক্সট বা কোড ফাইল যুক্ত করুন"
-                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                title="ছবি, কোড বা টেক্সট ফাইল যুক্ত করুন"
+                className="p-1.5 sm:p-2 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors shrink-0 cursor-pointer"
               >
                 <Paperclip className="w-4 h-4" />
               </button>
+
+              {/* Universal Share Hub Launcher Button */}
+              {onOpenShareReceiver && (
+                <button
+                  id="chat-share-receiver-btn"
+                  type="button"
+                  onClick={onOpenShareReceiver}
+                  title="বহিরাগত প্ল্যাটফর্ম থেকে ফাইল, ছবি, লিংক ও লেখা আনুন (Universal Share Hub)"
+                  className="p-1.5 sm:p-2 rounded-xl text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer shrink-0"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+              )}
 
               {/* Google Drive Import Button */}
               {onOpenGoogleDrive && (
@@ -365,7 +407,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   type="button"
                   onClick={onOpenGoogleDrive}
                   title="Google Drive থেকে ফাইল বা কোড ইম্পোর্ট করুন"
-                  className="p-1.5 rounded-lg text-amber-500 hover:text-amber-600 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                  className="p-1.5 sm:p-2 rounded-xl text-amber-500 hover:text-amber-600 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer shrink-0"
                 >
                   <HardDrive className="w-4 h-4" />
                 </button>
@@ -377,16 +419,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 type="button"
                 onClick={() => miniBrowser.openBrowser(input.trim() || undefined)}
                 title="মিনি গুগল ব্রাউজার ও লাইভ ওয়েব সার্চ খুলুন (Google Search, YouTube & Resources)"
-                className="p-1.5 rounded-lg text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
+                className="p-1.5 sm:p-2 rounded-xl text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer shrink-0"
               >
                 <Globe className="w-4 h-4" />
               </button>
 
-              {/* Hold to Record Microphone Button using MediaRecorder API */}
-              <div className="relative inline-flex items-center select-none">
+              {/* Hold to Record Microphone Button */}
+              <div className="relative inline-flex items-center select-none shrink-0">
                 {isRecording && (
                   <>
-                    {/* Multi-layered expanding ripple pulse rings */}
                     <span className="absolute -inset-1 rounded-xl bg-rose-500/40 animate-ping pointer-events-none" />
                     <span className="absolute -inset-2 rounded-xl bg-rose-500/20 animate-pulse blur-xs pointer-events-none" />
                   </>
@@ -441,7 +482,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                         }
                       : { duration: 0.15 }
                   }
-                  className={`relative z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none touch-none ${
+                  className={`relative z-10 flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer select-none touch-none shrink-0 ${
                     isRecording
                       ? 'bg-rose-600 text-white shadow-md active:bg-rose-700'
                       : isTranscribing
@@ -452,20 +493,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   {isTranscribing ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
-                      <span>ট্রান্সক্রাইব...</span>
+                      <span className="hidden xs:inline">ট্রান্সক্রাইব...</span>
                     </>
                   ) : isRecording ? (
                     <>
-                      {/* Active recording beacon */}
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
                       </span>
 
                       <Mic className="w-3.5 h-3.5 animate-pulse" />
-                      <span>{isHoldMode ? 'ছেড়ে দিন' : 'রেকর্ডিং'} (00:{String(recordingDuration).padStart(2, '0')})</span>
+                      <span className="text-[11px]">{isHoldMode ? 'ছেড়ে দিন' : 'রেকর্ডিং'} (00:{String(recordingDuration).padStart(2, '0')})</span>
 
-                      {/* Mini Live Audio Equalizer Bars */}
                       <div className="flex items-center gap-0.5 h-3 ml-0.5">
                         {[0.4, 0.9, 0.6, 1, 0.5].map((factor, i) => {
                           const freq = frequencyData[i * 4] || audioLevel;
@@ -491,7 +530,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     <>
                       <Mic className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" />
                       <span className="hidden sm:inline">ভয়েস (Hold)</span>
-                      <span className="sm:hidden">ভয়েস</span>
+                      <span className="hidden xs:inline sm:hidden">ভয়েস</span>
                     </>
                   )}
                 </motion.button>
@@ -503,29 +542,31 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 type="button"
                 onClick={() => setVoiceLang(voiceLang === 'bn-BD' ? 'en-US' : 'bn-BD')}
                 title={`ভয়েস ইনপুট ভাষা: ${voiceLang === 'bn-BD' ? 'বাংলা (bn-BD)' : 'English (en-US)'} - পরিবর্তন করতে ক্লিক করুন`}
-                className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-xl text-xs font-semibold transition-all border cursor-pointer shrink-0 ${
                   voiceLang === 'bn-BD'
                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
                     : 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800 hover:bg-blue-100'
                 }`}
               >
-                <Languages className="w-3.5 h-3.5" />
-                <span>{voiceLang === 'bn-BD' ? 'বাং' : 'EN'}</span>
+                <Languages className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span className="text-[11px]">{voiceLang === 'bn-BD' ? 'বাং' : 'EN'}</span>
               </button>
 
               {input && (
                 <button
                   id="clear-input-btn"
+                  type="button"
                   onClick={() => setInput('')}
                   title="লেখা মুছুন"
-                  className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                  className="p-1.5 sm:p-2 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors shrink-0 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {/* Right Action Buttons (Anchored, shrink-0, ALWAYS 100% visible on screen) */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 pl-1">
               {/* Word & Character Counter Component */}
               <WordCharCounter
                 text={input}
@@ -533,14 +574,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               />
 
               <span className="hidden lg:inline text-[11px] text-stone-400">
-                Enter পাঠাতে | 'পাঠাও' ভয়েস
+                Enter পাঠাতে
               </span>
 
               {isGenerating ? (
                 <button
                   id="stop-generating-btn"
+                  type="button"
                   onClick={onStop}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-semibold shadow-xs transition-colors shrink-0 cursor-pointer min-h-[40px]"
                 >
                   <Square className="w-3.5 h-3.5 fill-current" />
                   <span>থামাও</span>
@@ -548,19 +590,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               ) : (
                 <button
                   id="send-message-btn"
+                  type="button"
                   onClick={() => {
                     if (isRecording) stopRecording();
                     onSend();
                   }}
                   disabled={!input.trim()}
-                  className={`p-2 rounded-xl transition-all ${
+                  className={`flex items-center justify-center min-w-[42px] min-h-[42px] p-2.5 rounded-xl transition-all shrink-0 cursor-pointer ${
                     input.trim()
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-md shadow-emerald-600/30 active:scale-95'
                       : 'bg-stone-200 dark:bg-stone-800 text-stone-400 cursor-not-allowed'
                   }`}
-                  title="মেসেজ পাঠান"
+                  title="মেসেজ পাঠান (Send message)"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4 h-4 fill-current" />
                 </button>
               )}
             </div>

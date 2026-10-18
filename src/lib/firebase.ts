@@ -221,7 +221,7 @@ export async function signInWithGoogle(withDriveScopes = false): Promise<{ user:
       ) {
         console.info('User profile write queued in offline cache.');
       } else {
-        handleFirestoreError(err, OperationType.WRITE, path);
+        console.warn('Could not update user profile in Firestore:', err);
       }
     }
     

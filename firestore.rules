@@ -33,22 +33,24 @@ service cloud.firestore {
              data.keys().hasOnly(['id', 'email', 'displayName', 'photoURL', 'createdAt', 'updatedAt']) &&
              data.id == userId &&
              data.email is string && data.email.size() <= 200 &&
-             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 150)) &&
-             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
-             ((data.createdAt is string && data.createdAt.size() <= 50) || data.createdAt is number);
+             (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 250)) &&
+             (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 2048)) &&
+             ((data.createdAt is string && data.createdAt.size() <= 60) || data.createdAt is number || data.createdAt is timestamp) &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 60) || data.updatedAt is number || data.updatedAt is timestamp);
     }
 
     function isValidChatSession(data, userId) {
       return data.keys().hasAll(['id', 'userId', 'title', 'mode', 'createdAt', 'updatedAt']) &&
-             data.keys().hasOnly(['id', 'userId', 'title', 'mode', 'createdAt', 'updatedAt', 'isPinned', 'pinnedAt']) &&
+             data.keys().hasOnly(['id', 'userId', 'title', 'mode', 'createdAt', 'updatedAt', 'isPinned', 'pinnedAt', 'enableSearch']) &&
              data.userId == userId &&
              data.id is string && data.id.size() <= 128 &&
              data.title is string && data.title.size() <= 200 &&
              data.mode in ['general', 'citizen', 'coding', 'writing', 'research', 'learning'] &&
-             (data.createdAt is number || (data.createdAt is string && data.createdAt.size() <= 50)) &&
-             (data.updatedAt is number || (data.updatedAt is string && data.updatedAt.size() <= 50)) &&
+             (data.createdAt is number || (data.createdAt is string && data.createdAt.size() <= 60)) &&
+             (data.updatedAt is number || (data.updatedAt is string && data.updatedAt.size() <= 60)) &&
              (!('isPinned' in data) || data.isPinned is bool) &&
-             (!('pinnedAt' in data) || data.pinnedAt == null || data.pinnedAt is number);
+             (!('pinnedAt' in data) || data.pinnedAt == null || data.pinnedAt is number) &&
+             (!('enableSearch' in data) || data.enableSearch is bool);
     }
 
     function isValidChatMessage(data, userId, sessionId) {
@@ -59,7 +61,7 @@ service cloud.firestore {
              data.id is string && data.id.size() <= 128 &&
              data.role in ['user', 'assistant', 'system'] &&
              data.content is string && data.content.size() <= 50000 &&
-             (data.timestamp is number || (data.timestamp is string && data.timestamp.size() <= 50)) &&
+             (data.timestamp is number || (data.timestamp is string && data.timestamp.size() <= 60)) &&
              (!('citations' in data) || (data.citations is list && data.citations.size() <= 50));
     }
 
@@ -69,7 +71,7 @@ service cloud.firestore {
       allow list: if false; // No public listing of users
       allow create: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming(), userId);
       allow update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming(), userId) &&
-                    incoming().id == existing().id;
+                    (!('id' in existing()) || incoming().id == existing().id);
       allow delete: if isOwner(userId) && isValidId(userId);
 
       // User private chat sessions
@@ -78,8 +80,8 @@ service cloud.firestore {
         allow list: if isOwner(userId);
         allow create: if isOwner(userId) && isValidId(sessionId) && isValidChatSession(incoming(), userId);
         allow update: if isOwner(userId) && isValidId(sessionId) && isValidChatSession(incoming(), userId) &&
-                      incoming().id == existing().id &&
-                      incoming().userId == existing().userId;
+                      (!('id' in existing()) || incoming().id == existing().id) &&
+                      (!('userId' in existing()) || incoming().userId == existing().userId);
         allow delete: if isOwner(userId) && isValidId(sessionId);
 
         // Messages in session
@@ -88,9 +90,9 @@ service cloud.firestore {
           allow list: if isOwner(userId);
           allow create: if isOwner(userId) && isValidId(messageId) && isValidChatMessage(incoming(), userId, sessionId);
           allow update: if isOwner(userId) && isValidId(messageId) && isValidChatMessage(incoming(), userId, sessionId) &&
-                        incoming().id == existing().id &&
-                        incoming().userId == existing().userId &&
-                        incoming().sessionId == existing().sessionId;
+                        (!('id' in existing()) || incoming().id == existing().id) &&
+                        (!('userId' in existing()) || incoming().userId == existing().userId) &&
+                        (!('sessionId' in existing()) || incoming().sessionId == existing().sessionId);
           allow delete: if isOwner(userId) && isValidId(messageId);
         }
       }

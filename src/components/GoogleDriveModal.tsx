@@ -297,26 +297,29 @@ export const GoogleDriveModal: React.FC<GoogleDriveModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div 
-        className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-5xl h-[90vh] max-h-[850px] flex flex-col shadow-2xl overflow-hidden text-slate-200"
+        className="bg-slate-900 border-0 sm:border border-slate-700/80 rounded-none sm:rounded-2xl w-full max-w-5xl h-full sm:h-[90vh] sm:max-h-[850px] flex flex-col shadow-2xl overflow-hidden text-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile Drag Indicator Handle */}
+        <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
+
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-emerald-600 to-amber-500 flex items-center justify-center p-2 shadow-lg shadow-blue-500/10">
-              <HardDrive className="w-6 h-6 text-white" />
+        <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between shrink-0 gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-emerald-600 to-amber-500 flex items-center justify-center p-2 shadow-lg shadow-blue-500/10 shrink-0">
+              <HardDrive className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white tracking-tight">Google Drive ইন্টিগ্রেশন</h2>
-                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  ক্লাউড স্টোরেজ
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h2 className="text-sm sm:text-lg font-bold text-white tracking-tight truncate">Google Drive ইন্টিগ্রেশন</h2>
+                <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
+                  ক্লাউড
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                আপনার গুগল ড্রাইভের ফাইল ব্রাউজ করুন, চ্যাটে ইম্পোর্ট করুন এবং কোড/নোটস সংরক্ষণ করুন।
+              <p className="text-[11px] sm:text-xs text-slate-400 truncate">
+                আপনার গুগল ড্রাইভের ফাইল ব্রাউজ করুন ও সরাসরি চ্যাটে ইম্পোর্ট করুন।
               </p>
             </div>
           </div>

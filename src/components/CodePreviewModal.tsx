@@ -81,18 +81,21 @@ export const CodePreviewModal: React.FC<CodePreviewModalProps> = ({
   return (
     <div
       id="code-preview-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4"
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center bg-black/80 backdrop-blur-md p-0 sm:p-4"
       onClick={onClose}
     >
       <div
         id="code-preview-modal-container"
-        className="bg-stone-900 border border-stone-800 rounded-2xl max-w-4xl w-full h-[85vh] flex flex-col shadow-2xl overflow-hidden text-stone-100"
+        className="bg-stone-900 border-0 sm:border border-stone-800 rounded-none sm:rounded-2xl max-w-4xl w-full h-full sm:h-[85vh] flex flex-col shadow-2xl overflow-hidden text-stone-100"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile Drag Indicator Handle */}
+        <div className="w-12 h-1.5 bg-stone-700 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
+
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-stone-800 bg-stone-950/80">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-mono font-semibold uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-3.5 border-b border-stone-800 bg-stone-950/80 shrink-0 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <span className="text-[11px] sm:text-xs font-mono font-semibold uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
               {language || 'code'}
             </span>
             <div className="flex items-center gap-1 bg-stone-800 p-1 rounded-lg">
