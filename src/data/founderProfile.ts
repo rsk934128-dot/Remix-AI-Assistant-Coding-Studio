@@ -113,6 +113,11 @@ export const FOUNDER_PROFILE: FounderProfile = {
       type: 'Sovereign AI Pipeline',
       description: 'সার্বভৌম এআই কনটেন্ট পাইপলাইন ও এজেন্টিক অপারেটিং ওয়ার্কফ্লো।',
     },
+    {
+      name: 'RubelNet Firebase Manager 🛡️',
+      type: 'The Sovereign Grid for Firebase (Mission-Critical Command Center)',
+      description: 'Next.js 15 (App Router), Firebase Custom Claims RBAC, Realtime Database Live Log Streaming, Genkit Gemini AI, Firestore Node Manager ও Dexie.js অফলাইন সিঙ্ক সমৃদ্ধ সার্বভৌম ফায়ারবেস কমান্ড সেন্টার।',
+    },
   ],
   techStack: {
     frontend: ['Next.js', 'React', 'TypeScript', 'Tailwind CSS', 'Shadcn UI'],

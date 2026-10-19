@@ -4,6 +4,7 @@ import {
   Mail,
   Globe,
   ShieldCheck,
+  Shield,
   Bot,
   BarChart3,
   MapPin,
@@ -45,6 +46,7 @@ export interface MobileProgramsHubModalProps {
   onOpenExportChat: () => void;
   onOpenShareModal: () => void;
   onOpenShareReceiver?: () => void;
+  onOpenRubelNetManager?: () => void;
 }
 
 interface ProgramItem {
@@ -80,6 +82,7 @@ export const MobileProgramsHubModal: React.FC<MobileProgramsHubModalProps> = ({
   onOpenExportChat,
   onOpenShareModal,
   onOpenShareReceiver,
+  onOpenRubelNetManager,
 }) => {
   const musicPlayer = useMusicPlayer();
   const miniBrowser = useMiniBrowser();
@@ -96,6 +99,20 @@ export const MobileProgramsHubModal: React.FC<MobileProgramsHubModalProps> = ({
   };
 
   const programs: ProgramItem[] = [
+    {
+      id: 'rubelnet-manager',
+      titleBn: 'RubelNet Firebase Manager 🛡️',
+      titleEn: 'The Sovereign Grid for Firebase',
+      descBn: 'Next.js 15, Firebase Custom Claims RBAC, Realtime Log Viewer, Genkit Gemini AI, Node Manager ও Dexie.js অফলাইন সিঙ্ক।',
+      descEn: 'Command center for Firebase project administrators with granular RBAC, realtime stream, and Genkit AI ops.',
+      category: 'core',
+      badge: 'Sovereign',
+      icon: Shield,
+      colorBg: 'bg-emerald-950/80 dark:bg-emerald-950/90',
+      colorText: 'text-emerald-400',
+      colorBorder: 'border-emerald-500/40',
+      action: () => (onOpenRubelNetManager ? onOpenRubelNetManager() : null),
+    },
     {
       id: 'share-receiver',
       titleBn: 'বহিরাগত প্ল্যাটফর্ম শেয়ার হাব',
@@ -224,12 +241,12 @@ export const MobileProgramsHubModal: React.FC<MobileProgramsHubModalProps> = ({
     },
     {
       id: 'youtube-music',
-      titleBn: 'মিউজিক ও ভিডিও প্লেয়ার',
-      titleEn: 'In-App YouTube Player Studio',
-      descBn: 'কাজের ফাঁকে ব্যাকগ্রাউন্ডে লো-ফাই মিউজিক, ভিডিও প্লেলিস্ট বা অডিও শোনার ইন-অ্যাপ প্লেয়ার।',
-      descEn: 'Floating and fullscreen YouTube audio/video player for coding and relaxation.',
+      titleBn: 'ইউটিউব অটো-কন্টিনিউয়াস গান 🎵',
+      titleEn: 'YouTube Auto-Continuous Player',
+      descBn: 'একের পর এক গান স্বয়ংক্রিয়ভাবে চলা, সময় অনুযায়ী নতুন গান আপডেট ও পূর্বে শোনা গান পুনরায় শোনার প্লেলিস্ট।',
+      descEn: 'Continuous sequential YouTube playback, dynamic time-of-day feed, and listening history replay.',
       category: 'tools',
-      badge: 'মিডিয়া',
+      badge: 'অটো-প্লে',
       icon: Youtube,
       colorBg: 'bg-red-50 dark:bg-red-950/60',
       colorText: 'text-red-600 dark:text-red-400',

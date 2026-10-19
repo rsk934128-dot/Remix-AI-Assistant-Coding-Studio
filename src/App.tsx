@@ -54,6 +54,7 @@ import { UniversalAppsConnectModal, UniversalTab } from './components/UniversalA
 import { MobileProgramsHubModal } from './components/MobileProgramsHubModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { UniversalShareReceiverModal } from './components/UniversalShareReceiverModal';
+import { RubelNetFirebaseManagerModal } from './components/RubelNetFirebaseManagerModal';
 import { GlobalDropZone } from './components/GlobalDropZone';
 import { parseIncomingShareParams, InboundSharedContent } from './utils/shareUtils';
 import { useAuth } from './context/AuthContext';
@@ -132,6 +133,7 @@ export default function App() {
 
   // Inbound Web Share Target and External Content Ingest state
   const [shareReceiverOpen, setShareReceiverOpen] = useState(false);
+  const [rubelNetManagerOpen, setRubelNetManagerOpen] = useState(false);
   const [incomingSharedItem, setIncomingSharedItem] = useState<InboundSharedContent | null>(null);
   const [sharedAlertToast, setSharedAlertToast] = useState<string | null>(null);
 
@@ -964,6 +966,8 @@ export default function App() {
         onOpenFounderProfile={() => setFounderProfileModalOpen(true)}
         onOpenEmailComposer={() => handleOpenEmailComposer()}
         onOpenShare={handleOpenShareModal}
+        onOpenShareReceiver={() => setShareReceiverOpen(true)}
+        onOpenRubelNetManager={() => setRubelNetManagerOpen(true)}
         onSelectMode={setMode}
         currentMode={mode}
       />
@@ -983,6 +987,8 @@ export default function App() {
           onOpenFounderProfile={() => setFounderProfileModalOpen(true)}
           onOpenEmailComposer={() => handleOpenEmailComposer()}
           onOpenMobilePrograms={() => setMobileProgramsHubOpen(true)}
+          onOpenShareReceiver={() => setShareReceiverOpen(true)}
+          onOpenRubelNetManager={() => setRubelNetManagerOpen(true)}
           onNewChat={handleNewChat}
           onClearChat={handleClearChat}
           onExportChat={handleExportChat}
@@ -1378,6 +1384,7 @@ export default function App() {
             mode={mode}
             setMode={setMode}
             onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
+            onOpenShareReceiver={() => setShareReceiverOpen(true)}
             onFocus={() => setIsChatInputFocused(true)}
             onBlur={() => setIsChatInputFocused(false)}
           />
@@ -1556,7 +1563,57 @@ export default function App() {
         onOpenFounderProfile={() => setFounderProfileModalOpen(true)}
         onOpenExportChat={() => handleExportChat(activeSession)}
         onOpenShareModal={handleOpenShareModal}
+        onOpenShareReceiver={() => setShareReceiverOpen(true)}
+        onOpenRubelNetManager={() => setRubelNetManagerOpen(true)}
       />
+
+      {/* Global Drop Zone for Files, Photos, Links from other apps */}
+      <GlobalDropZone
+        onDropItem={(item) => {
+          setIncomingSharedItem(item);
+          setShareReceiverOpen(true);
+          setSharedAlertToast('ড্রপ করা আইটেম সফলভাবে শেয়ার হাবে যুক্ত হয়েছে');
+          setTimeout(() => setSharedAlertToast(null), 4000);
+        }}
+      />
+
+      {/* Universal Inbound Share & Content Receiver Modal */}
+      <UniversalShareReceiverModal
+        isOpen={shareReceiverOpen}
+        onClose={() => {
+          setShareReceiverOpen(false);
+          setIncomingSharedItem(null);
+        }}
+        initialSharedItem={incomingSharedItem}
+        onInsertToChat={(prompt, autoSend) => {
+          if (autoSend) {
+            handleSendMessage(prompt);
+          } else {
+            setInput((prev) => (prev ? `${prev}\n\n${prompt}` : prompt));
+          }
+        }}
+      />
+
+      {/* RubelNet Firebase Manager Sovereign Grid Command Center Modal */}
+      <RubelNetFirebaseManagerModal
+        isOpen={rubelNetManagerOpen}
+        onClose={() => setRubelNetManagerOpen(false)}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
+      />
+
+      {/* Inbound Share Toast Notification */}
+      {sharedAlertToast && (
+        <div className="fixed top-16 right-4 z-50 p-3 rounded-2xl bg-emerald-600 text-white shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in slide-in-from-top-3 border border-emerald-400">
+          <Share2 className="w-4 h-4 shrink-0 animate-pulse" />
+          <span>{sharedAlertToast}</span>
+          <button
+            onClick={() => setSharedAlertToast(null)}
+            className="p-1 hover:bg-white/20 rounded-lg text-white/90 hover:text-white cursor-pointer ml-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* PWA Offline Indicator */}
       <OfflineIndicator />

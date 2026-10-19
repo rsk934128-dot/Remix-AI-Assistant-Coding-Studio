@@ -52,4 +52,9 @@ export interface MusicTrack {
   artist?: string;
   originalUrl?: string;
   searchQuery?: string;
+  thumbnail?: string;
+  duration?: string;
+  playedAt?: number;
+  category?: string;
+  isFavorite?: boolean;
 }

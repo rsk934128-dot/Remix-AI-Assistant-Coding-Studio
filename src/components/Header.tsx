@@ -21,7 +21,9 @@ import {
   FileDown,
   Server,
   ShieldCheck,
+  Shield,
   Youtube,
+  Music,
   Bot,
   HardDrive,
   Volume2,
@@ -56,6 +58,7 @@ interface HeaderProps {
   onOpenEmailComposer?: () => void;
   onOpenMobilePrograms?: () => void;
   onOpenShareReceiver?: () => void;
+  onOpenRubelNetManager?: () => void;
   onNewChat: () => void;
   onClearChat: () => void;
   onExportChat: () => void;
@@ -87,6 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenEmailComposer,
   onOpenMobilePrograms,
   onOpenShareReceiver,
+  onOpenRubelNetManager,
   onNewChat,
   onClearChat,
   onExportChat,
@@ -327,6 +331,42 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline">শেয়ার হাব</span>
           </button>
         )}
+
+        {/* RubelNet Firebase Manager Sovereign Grid Button */}
+        {onOpenRubelNetManager && (
+          <button
+            id="header-open-rubelnet-btn"
+            type="button"
+            onClick={onOpenRubelNetManager}
+            className="hidden xl:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-950/70 to-stone-900/90 hover:from-emerald-900/80 text-emerald-300 border border-emerald-500/40 shadow-xs cursor-pointer transition-all"
+            title="RubelNet Firebase Manager 🛡️ — The Sovereign Grid for Firebase Command Center"
+          >
+            <Shield className="w-3.5 h-3.5 text-emerald-400" />
+            <span>RubelNet 🛡️</span>
+          </button>
+        )}
+
+        {/* YouTube Auto-Continuous Music Button */}
+        <button
+          id="header-open-music-player-btn"
+          type="button"
+          onClick={() => {
+            if (musicPlayer.currentTrack) {
+              musicPlayer.expandPlayer();
+            } else {
+              musicPlayer.playTrack({
+                videoId: 'jfKfPfyJRdk',
+                title: 'Lofi Girl - Chill Beats to Code & Study',
+                originalUrl: 'https://www.youtube.com/watch?v=jfKfPfyJRdk',
+              });
+            }
+          }}
+          className="hidden lg:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 dark:from-red-950/60 dark:to-rose-950/60 dark:hover:from-red-900/60 dark:hover:to-rose-900/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 transition-all shadow-2xs cursor-pointer"
+          title="ইউটিউব অটো-কন্টিনিউয়াস গান (একের পর এক গান, সময় অনুযায়ী আপডেট ও পূর্বে শোনা গান)"
+        >
+          <Music className={`w-3.5 h-3.5 text-red-500 ${musicPlayer.isStreaming ? 'animate-bounce' : ''}`} />
+          <span>মিউজিক 🎵</span>
+        </button>
 
         {/* Mobile Programs Launcher Button */}
         {onOpenMobilePrograms && (

@@ -17,6 +17,7 @@ import {
   Cloud,
   LogIn,
   Share2,
+  Shield,
   ShieldCheck,
   Bot,
   HardDrive,
@@ -65,6 +66,8 @@ interface SidebarProps {
   onOpenFounderProfile?: () => void;
   onOpenEmailComposer?: () => void;
   onOpenShare?: (config?: { shareType?: 'app' | 'session' }) => void;
+  onOpenShareReceiver?: () => void;
+  onOpenRubelNetManager?: () => void;
   onSelectMode: (mode: AssistantMode) => void;
   currentMode: AssistantMode;
 }
@@ -90,6 +93,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenFounderProfile,
   onOpenEmailComposer,
   onOpenShare,
+  onOpenShareReceiver,
+  onOpenRubelNetManager,
   onSelectMode,
   currentMode,
 }) => {
@@ -319,6 +324,70 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <span>⚡ এআই প্রোগ্রাম ও টুলকিট</span>
                 </p>
                 <div className="space-y-1.5">
+                  {/* Universal Inbound Share Hub (Receive Files, Photos, Links, Notes) */}
+                  {onOpenShareReceiver && (
+                    <button
+                      id="sidebar-prog-share-receiver"
+                      onClick={() => {
+                        onOpenShareReceiver();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent hover:from-emerald-500/25 border border-emerald-500/30 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Share2 className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+                              বহিরাগত শেয়ার হাব (ইনপুট)
+                            </p>
+                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-600 text-white uppercase">
+                              New
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-emerald-700 dark:text-emerald-400 truncate">
+                            ফাইল, ফটো, সোশ্যাল লিংক ও লেখা আনুন
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* RubelNet Firebase Manager Sovereign Grid */}
+                  {onOpenRubelNetManager && (
+                    <button
+                      id="sidebar-prog-rubelnet-manager"
+                      onClick={() => {
+                        onOpenRubelNetManager();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-emerald-950/80 via-teal-950/60 to-stone-900 border border-emerald-500/40 text-left transition-all group cursor-pointer shadow-2xs hover:border-emerald-400"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Shield className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-white truncate">
+                              RubelNet Firebase Manager
+                            </p>
+                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-500 text-stone-950 uppercase">
+                              Grid 🛡️
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-emerald-400 truncate">
+                            The Sovereign Grid for Firebase
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
                   {/* Universal Apps, Gmail & Messaging Hub */}
                   {onOpenUniversalApps && (
                     <button
@@ -653,11 +722,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <Music className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-red-950 dark:text-red-200 truncate">
-                          ইউটিউব গান ও মিডিয়া স্টুডিও
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-red-950 dark:text-red-200 truncate">
+                            ইউটিউব অটো-কন্টিনিউয়াস গান 🎵
+                          </p>
+                          <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-red-600 text-white uppercase">
+                            Auto
+                          </span>
+                        </div>
                         <p className="text-[10px] text-red-700/80 dark:text-red-400/80 truncate">
-                          ইন-অ্যাপ ব্যাকগ্রাউন্ড গান ও ভিডিও
+                          একের পর এক গান, সময় অনুযায়ী আপডেট ও হিস্ট্রি
                         </p>
                       </div>
                     </div>

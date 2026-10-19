@@ -1340,6 +1340,171 @@ app.post('/api/youtube/search', async (req, res) => {
   }
 });
 
+// Dynamic Time-of-Day and Auto-Updating YouTube Music Feed API
+const musicFeedCache: Record<string, { timestamp: number; videos: any[] }> = {};
+
+app.get('/api/youtube/time-feed', async (req, res) => {
+  try {
+    const period = (req.query.period as string) || 'evening';
+    const category = (req.query.category as string) || 'all';
+    const cacheKey = `${period}_${category}`;
+    const now = Date.now();
+
+    // 15-minute cache to provide fresh updates across different times of the day
+    if (musicFeedCache[cacheKey] && now - musicFeedCache[cacheKey].timestamp < 15 * 60 * 1000) {
+      return res.json({
+        period,
+        category,
+        cached: true,
+        videos: musicFeedCache[cacheKey].videos,
+      });
+    }
+
+    let searchQuery = 'বাংলা ব্যান্ডের সেরা গান';
+    if (category === 'bands') {
+      searchQuery = 'বাংলা ব্যান্ড গান জেমস এলআরবি মাইলস';
+    } else if (category === 'coke_studio') {
+      searchQuery = 'Coke Studio Bangla latest hits';
+    } else if (category === 'rabindra') {
+      searchQuery = 'রবীন্দ্র সংগীত সেরা গান';
+    } else if (category === 'lofi') {
+      searchQuery = 'Bangla Lo-Fi Chill Beats';
+    } else if (category === 'sleep') {
+      searchQuery = 'Deep sleep relaxing piano rain melody';
+    } else {
+      switch (period) {
+        case 'morning':
+          searchQuery = 'সকালের শান্ত রবীন্দ্র সংগীত ও ভৈরবী সুর';
+          break;
+        case 'afternoon':
+          searchQuery = 'কোক স্টুডিও বাংলা ও আধুনিক বাংলা গান';
+          break;
+        case 'evening':
+          searchQuery = 'বাংলা ব্যান্ড সেরা গান জেমস এলআরবি অর্থহীন';
+          break;
+        case 'night':
+        default:
+          searchQuery = 'বাংলা সফট মেলোডি ও রাতের মিষ্টি গান';
+          break;
+      }
+    }
+
+    const videos = await searchYouTubeDirect(searchQuery);
+    if (videos && videos.length > 0) {
+      musicFeedCache[cacheKey] = { timestamp: now, videos };
+      return res.json({
+        period,
+        category,
+        cached: false,
+        videos,
+      });
+    }
+
+    res.json({
+      period,
+      category,
+      cached: false,
+      videos: [],
+    });
+  } catch (err: any) {
+    console.warn('Error in /api/youtube/time-feed:', err?.message || err);
+    res.json({
+      period: 'evening',
+      category: 'all',
+      videos: [],
+    });
+  }
+});
+
+// AI-Powered Music Ideas & Song Recommendation Generator
+app.post('/api/youtube/ai-ideas', async (req, res) => {
+  try {
+    const { mood = 'মন ভালো করার মতো মিষ্টি গান', genre } = req.body || {};
+    const ai = getAIClient();
+    const prompt = `You are an expert music curator and DJ specializing in Bengali music (বাংলা ব্যান্ড, কোক স্টুডিও, রবীন্দ্র সংগীত, ফোক, আধুনিক) and global melodies.
+User is asking for song recommendations and ideas based on this mood/preference: "${mood}" ${genre ? `(Genre: ${genre})` : ''}.
+
+Provide 5 creative, accurate song recommendations that truly exist on YouTube.
+Respond ONLY with a valid JSON array in this format:
+[
+  {
+    "titleBn": "গানের নাম ও শিল্পী",
+    "artist": "শিল্পীর নাম",
+    "searchQuery": "গানের সঠিক নাম ও শিল্পী (যেমন: আইয়ুব বাচ্চু সেই তুমি)",
+    "moodReasonBn": "কেন এই গানটি এই মুডের জন্য সেরা (সংক্ষিপ্ত ১ বাক্য)",
+    "genre": "ব্যান্ড / ফোক / মেলোডি / লফি"
+  }
+]
+`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.7,
+      },
+    });
+
+    const parsed = JSON.parse(response.text || '[]');
+    const enrichedIdeas = [];
+
+    // For the top 3 ideas, quickly look up real YouTube video IDs so they can be played directly
+    for (let i = 0; i < Math.min(3, parsed.length); i++) {
+      const item = parsed[i];
+      try {
+        const direct = await searchYouTubeDirect(item.searchQuery || item.titleBn);
+        if (direct && direct.length > 0) {
+          enrichedIdeas.push({
+            ...item,
+            topVideo: direct[0],
+          });
+          continue;
+        }
+      } catch (_) {}
+      enrichedIdeas.push(item);
+    }
+
+    // Add remaining
+    for (let i = 3; i < parsed.length; i++) {
+      enrichedIdeas.push(parsed[i]);
+    }
+
+    res.json({
+      mood,
+      ideas: enrichedIdeas,
+    });
+  } catch (err: any) {
+    console.warn('Error in /api/youtube/ai-ideas:', err?.message || err);
+    res.json({
+      mood: 'সেরা গান',
+      ideas: [
+        {
+          titleBn: 'সেই তুমি - আইয়ুব বাচ্চু (এলআরবি)',
+          artist: 'আইয়ুব বাচ্চু',
+          searchQuery: 'আইয়ুব বাচ্চু সেই তুমি',
+          moodReasonBn: 'নস্টালজিক মেলোডি যা হৃদয়ে দোলা দেয়।',
+          genre: 'বাংলা ব্যান্ড',
+        },
+        {
+          titleBn: 'নাসেক নাসেক - কোক স্টুডিও বাংলা',
+          artist: 'অনির্বাণ ভট্টাচার্য',
+          searchQuery: 'Coke Studio Bangla Nasek Nasek',
+          moodReasonBn: 'মনকে চনমনে করে তোলার দুর্দান্ত ফোক-ফিউশন।',
+          genre: 'কোক স্টুডিও',
+        },
+        {
+          titleBn: 'আনন্দলোকে মঙ্গলালোকে - রবীন্দ্র সংগীত',
+          artist: 'রবীন্দ্রনাথ ঠাকুর',
+          searchQuery: 'আনন্দলোকে মঙ্গলালোকে রবীন্দ্র সংগীত',
+          moodReasonBn: 'ভোর বা কাজের শুরুতে আধ্যাত্মিক প্রশান্তি।',
+          genre: 'রবীন্দ্র সংগীত',
+        },
+      ],
+    });
+  }
+});
+
 // Autonomous Freelance Agent: Evaluate Job & Generate Winning Proposal
 app.post('/api/agent/evaluate-job', async (req, res) => {
   try {
@@ -1787,6 +1952,85 @@ app.post('/api/ddns/update', async (req, res) => {
   }
 });
 
+// Universal Share Target and Link Metadata Preview API
+app.get('/api/fetch-link-preview', async (req, res) => {
+  try {
+    const rawUrl = req.query.url as string;
+    if (!rawUrl || typeof rawUrl !== 'string') {
+      return res.status(400).json({ success: false, error: 'URL is required' });
+    }
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(rawUrl);
+    } catch {
+      return res.status(400).json({ success: false, error: 'Invalid URL format' });
+    }
+
+    // Safety check: block localhost / private IP loops
+    const host = parsedUrl.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.')) {
+      return res.status(400).json({ success: false, error: 'Access to local IP is forbidden' });
+    }
+
+    const abortCtrl = new AbortController();
+    const timeout = setTimeout(() => abortCtrl.abort(), 6000);
+
+    try {
+      const response = await fetch(rawUrl, {
+        signal: abortCtrl.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 AIStudioBot/1.0',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        },
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return res.json({
+          success: true,
+          domain: parsedUrl.hostname,
+          title: parsedUrl.hostname,
+          description: `লিংক: ${rawUrl}`,
+          url: rawUrl,
+        });
+      }
+
+      const html = await response.text();
+      // Extract title, og:title, og:description, description, og:image
+      const ogTitleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["'](.*?)["']/i) || html.match(/<meta\s+content=["'](.*?)["']\s+property=["']og:title["']/i);
+      const titleTagMatch = html.match(/<title[^>]*>(.*?)<\/title>/i);
+      const ogDescMatch = html.match(/<meta\s+property=["']og:description["']\s+content=["'](.*?)["']/i) || html.match(/<meta\s+content=["'](.*?)["']\s+property=["']og:description["']/i);
+      const metaDescMatch = html.match(/<meta\s+name=["']description["']\s+content=["'](.*?)["']/i) || html.match(/<meta\s+content=["'](.*?)["']\s+name=["']description["']/i);
+      const ogImageMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["'](.*?)["']/i) || html.match(/<meta\s+content=["'](.*?)["']\s+property=["']og:image["']/i);
+
+      const title = ogTitleMatch?.[1] || titleTagMatch?.[1] || parsedUrl.hostname;
+      const description = ogDescMatch?.[1] || metaDescMatch?.[1] || '';
+      const image = ogImageMatch?.[1] || '';
+
+      return res.json({
+        success: true,
+        title: title.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').slice(0, 150),
+        description: description.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').slice(0, 300),
+        image,
+        domain: parsedUrl.hostname,
+        url: rawUrl,
+      });
+    } catch {
+      clearTimeout(timeout);
+      return res.json({
+        success: true,
+        domain: parsedUrl.hostname,
+        title: parsedUrl.hostname,
+        description: `লিংক: ${rawUrl}`,
+        url: rawUrl,
+      });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err?.message || 'Link preview fetch failed' });
+  }
+});
 
 // Global Express error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
