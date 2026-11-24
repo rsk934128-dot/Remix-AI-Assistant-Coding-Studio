@@ -11,6 +11,23 @@ export interface GroundingChunk {
   web?: GroundingWeb;
 }
 
+export interface GeneratedImageMetadata {
+  url: string;
+  prompt: string;
+  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
+  mimeType?: string;
+  model?: string;
+  source?: 'gemini' | 'ai-synthesis';
+  width?: number;
+  height?: number;
+  createdAt?: number;
+}
+
+export interface SmartReplySuggestion {
+  text: string;
+  type: 'question' | 'action';
+}
+
 export interface ChatMessage {
   id: string;
   role: Role;
@@ -21,6 +38,9 @@ export interface ChatMessage {
   searchQueries?: string[];
   mode?: AssistantMode;
   error?: string;
+  generatedImage?: GeneratedImageMetadata;
+  smartReplies?: SmartReplySuggestion[];
+  isGeneratingSmartReplies?: boolean;
 }
 
 export interface ChatSession {
@@ -57,4 +77,24 @@ export interface MusicTrack {
   playedAt?: number;
   category?: string;
   isFavorite?: boolean;
+}
+
+export interface YouTubeUserProfile {
+  id: string;
+  title: string;
+  description: string;
+  customUrl?: string;
+  thumbnail: string;
+  subscriberCount: string;
+  videoCount: string;
+  viewCount: string;
+}
+
+export interface YouTubePlaylistItem {
+  id: string;
+  title: string;
+  description: string;
+  itemCount: number;
+  thumbnail: string;
+  publishedAt?: string;
 }

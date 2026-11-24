@@ -23,10 +23,24 @@ import {
   Cpu,
   Smartphone,
   ExternalLink,
+  Key,
+  Bell,
+  Tv,
+  Palette,
+  Briefcase,
+  ShieldAlert,
+  CreditCard,
+  Wallet,
+  Plane,
+  Package,
+  MessagesSquare,
+  Rocket,
+  BookMarked
 } from 'lucide-react';
 import { UniversalTab } from './UniversalAppsConnectModal';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
 import { useMiniBrowser } from '../context/MiniBrowserContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export interface MobileProgramsHubModalProps {
   isOpen: boolean;
@@ -47,6 +61,21 @@ export interface MobileProgramsHubModalProps {
   onOpenShareModal: () => void;
   onOpenShareReceiver?: () => void;
   onOpenRubelNetManager?: () => void;
+  onOpenDeveloperApi?: () => void;
+  onOpenMobileCCTGuide?: () => void;
+  onOpenNotificationModal?: () => void;
+  onOpenMediaStudio?: () => void;
+  onOpenPictureStudio?: () => void;
+  onOpenPortfolioPwa?: () => void;
+  onOpenOmniSafeBrowser?: () => void;
+  onOpenPaymentGatewayHub?: () => void;
+  onOpenVideoAudioDownloader?: () => void;
+  onOpenPayHubDisbursement?: () => void;
+  onOpenUaeVisaHub?: () => void;
+  onOpenApkEditorStudio?: () => void;
+  onOpenPulseSms?: () => void;
+  onOpenGitHubBusinessHub?: () => void;
+  onOpenEmailTemplatesLibrary?: () => void;
 }
 
 interface ProgramItem {
@@ -83,9 +112,25 @@ export const MobileProgramsHubModal: React.FC<MobileProgramsHubModalProps> = ({
   onOpenShareModal,
   onOpenShareReceiver,
   onOpenRubelNetManager,
+  onOpenDeveloperApi,
+  onOpenMobileCCTGuide,
+  onOpenNotificationModal,
+  onOpenMediaStudio,
+  onOpenPictureStudio,
+  onOpenPortfolioPwa,
+  onOpenOmniSafeBrowser,
+  onOpenPaymentGatewayHub,
+  onOpenVideoAudioDownloader,
+  onOpenPayHubDisbursement,
+  onOpenUaeVisaHub,
+  onOpenApkEditorStudio,
+  onOpenPulseSms,
+  onOpenGitHubBusinessHub,
+  onOpenEmailTemplatesLibrary,
 }) => {
   const musicPlayer = useMusicPlayer();
   const miniBrowser = useMiniBrowser();
+  const { unreadCount } = useNotifications();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -99,6 +144,20 @@ export const MobileProgramsHubModal: React.FC<MobileProgramsHubModalProps> = ({
   };
 
   const programs: ProgramItem[] = [
+    {
+      id: 'developer-api-saas',
+      titleBn: 'ডেভেলপার API সার্ভিস ও SaaS হাব',
+      titleEn: 'Developer Cloud API & SaaS Gateway',
+      descBn: 'থার্ড-পার্টি অ্যাপ ও ডেভেলপারদের জন্য সিকিউর API Key (SHA-256), রেট লিমিট, কোটা ট্র্যাকিং ও cURL/Node.js/Python ডক্স।',
+      descEn: 'Full-featured API Key Authentication, Rate Limiting, & Developer SaaS management platform.',
+      category: 'core',
+      badge: 'SaaS PRO',
+      icon: Key,
+      colorBg: 'bg-blue-950/80 dark:bg-blue-950/90',
+      colorText: 'text-blue-400',
+      colorBorder: 'border-blue-500/40',
+      action: () => (onOpenDeveloperApi ? onOpenDeveloperApi() : null),
+    },
     {
       id: 'rubelnet-manager',
       titleBn: 'RubelNet Firebase Manager 🛡️',
@@ -128,6 +187,34 @@ export const MobileProgramsHubModal: React.FC<MobileProgramsHubModalProps> = ({
       action: () => (onOpenShareReceiver ? onOpenShareReceiver() : onOpenShareModal()),
     },
     {
+      id: 'ai-picture-studio',
+      titleBn: 'AI ছবি ও আর্ট স্টুডিও 🎨',
+      titleEn: 'AI Picture Studio & Art Generator',
+      descBn: 'কৃত্রিম বুদ্ধিমত্তা দিয়ে যেকোনো বিষয়ের সুন্দর ছবি ও আর্ট তৈরি করুন এবং নিমেষেই হাই-কোয়ালিটিতে ডাউনলোড করে নিন।',
+      descEn: 'Generate breathtaking images and artwork with AI synthesis and download in high resolution with 1 click.',
+      category: 'tools',
+      badge: 'জনপ্রিয়',
+      icon: Palette,
+      colorBg: 'bg-purple-50 dark:bg-purple-950/60',
+      colorText: 'text-purple-600 dark:text-purple-400',
+      colorBorder: 'border-purple-200 dark:border-purple-800',
+      action: () => (onOpenPictureStudio ? onOpenPictureStudio() : null),
+    },
+    {
+      id: 'github-business-hub',
+      titleBn: 'GitHub বিজনেস, SMS ও অটো-Gmail স্টুডিও',
+      titleEn: 'GitHub Business, Marketing & Auto-Gmail Engine',
+      descBn: 'GitHub প্রজেক্ট দিয়ে ব্যবসা আইডিয়া জেনারেশন, SMS ক্যাম্পেইন, সরাসরি Gmail প্রেরণ, মার্কেটিং প্লেবুক ও বিজনেস শিক্ষা।',
+      descEn: 'Generate startup ideas from GitHub repos, write SMS & marketing plans, learn business, and auto-send direct Gmail.',
+      category: 'comms',
+      badge: 'নতুন AI হাব',
+      icon: Rocket,
+      colorBg: 'bg-emerald-50 dark:bg-emerald-950/60',
+      colorText: 'text-emerald-600 dark:text-emerald-400',
+      colorBorder: 'border-emerald-300 dark:border-emerald-700',
+      action: () => (onOpenGitHubBusinessHub ? onOpenGitHubBusinessHub() : onOpenUniversalApps('github')),
+    },
+    {
       id: 'email-composer',
       titleBn: 'ইমেইল কম্পোজার ও ড্রাফটার',
       titleEn: 'Professional Email Composer',
@@ -140,6 +227,20 @@ export const MobileProgramsHubModal: React.FC<MobileProgramsHubModalProps> = ({
       colorText: 'text-teal-600 dark:text-teal-400',
       colorBorder: 'border-teal-200 dark:border-teal-800',
       action: onOpenEmailComposer,
+    },
+    {
+      id: 'email-templates-library',
+      titleBn: 'ইমেইল টেমপ্লেট লাইব্রেরি',
+      titleEn: 'Email Templates Library',
+      descBn: 'Marketing, Collaboration ও Follow-up ক্যাটাগরিতে কাস্টম ইমেইল টেমপ্লেট সেভ করে বারবার ব্যবহার করুন।',
+      descEn: 'Save, categorize (Marketing, Collaboration, Follow-up), and reuse business outreach email templates.',
+      category: 'comms',
+      badge: 'Templates',
+      icon: BookMarked,
+      colorBg: 'bg-amber-50 dark:bg-amber-950/60',
+      colorText: 'text-amber-600 dark:text-amber-400',
+      colorBorder: 'border-amber-200 dark:border-amber-800',
+      action: () => (onOpenEmailTemplatesLibrary ? onOpenEmailTemplatesLibrary() : onOpenEmailComposer()),
     },
     {
       id: 'universal-apps',
@@ -287,6 +388,23 @@ export const MobileProgramsHubModal: React.FC<MobileProgramsHubModalProps> = ({
       },
     },
     {
+      id: 'universal-media',
+      titleBn: 'ইউনিভার্সাল মিডিয়া প্লেয়ার ও ইমেজ স্টুডিও',
+      titleEn: 'Universal Video Player & Image Inspector',
+      descBn: 'ইন্টারনেটের যেকোনো ভিডিও লিংক সরাসরি প্লে করুন অথবা যেকোনো ইমেজ লিংক জুম, রোটেট ও ডাউনলোড করুন।',
+      descEn: 'Play any video link (MP4, WebM, Vimeo, YouTube, Drive) or inspect/zoom any image link.',
+      category: 'tools',
+      badge: 'মিডিয়া',
+      icon: Tv,
+      colorBg: 'bg-cyan-50 dark:bg-cyan-950/60',
+      colorText: 'text-cyan-600 dark:text-cyan-400',
+      colorBorder: 'border-cyan-200 dark:border-cyan-800',
+      action: () => {
+        onClose();
+        if (onOpenMediaStudio) onOpenMediaStudio();
+      },
+    },
+    {
       id: 'tts-settings',
       titleBn: 'ভয়েস স্পিড ও পড়ার সেটিংস',
       titleEn: 'TTS Voice Speed & Pitch Controls',
@@ -315,6 +433,166 @@ export const MobileProgramsHubModal: React.FC<MobileProgramsHubModalProps> = ({
       action: onOpenFounderProfile,
     },
     {
+      id: 'portfolio-pwa',
+      titleBn: 'শেখ ফরিদ — Portfolio PWA (#projects)',
+      titleEn: 'Sheikh Farid Portfolio PWA & Projects',
+      descBn: 'ফুল-স্ট্যাক ও মোবাইল ডেভেলপার পোর্টফোলিও PWA, ইন্টারঅ্যাক্টিভ প্রজেক্ট শোকেস ও অফলাইন ক্যাশিং সরাসরি আইফ্রেমে দেখুন।',
+      descEn: 'Full-stack & mobile developer portfolio PWA with interactive project showcase inside in-app iframe.',
+      category: 'profile',
+      badge: 'PWA আইফ্রেম',
+      icon: Briefcase,
+      colorBg: 'bg-sky-50 dark:bg-sky-950/60',
+      colorText: 'text-sky-600 dark:text-sky-400',
+      colorBorder: 'border-sky-200 dark:border-sky-800',
+      action: () => {
+        if (onOpenPortfolioPwa) {
+          onOpenPortfolioPwa();
+        } else {
+          miniBrowser.openBrowser('https://portfolio-pwa-azure.vercel.app/#projects', 'web');
+        }
+      },
+    },
+    {
+      id: 'omnisafe-browser',
+      titleBn: 'OnionShield (OmniSafe প্রাইভেসি ব্রাউজার)',
+      titleEn: 'OnionShield Privacy Portal & Android APK',
+      descBn: 'প্রাইভেট সার্চ, URL ট্র্যাকার স্ট্রিপিং, WebRTC ও ফিঙ্গারপ্রিন্ট অডিট এবং Android APK ডাউনলোড পোর্টাল সরাসরি আইফ্রেমে দেখুন।',
+      descEn: 'Private search, tracker stripper, browser leak audit, and OnionShield Android APK launcher.',
+      category: 'tools',
+      badge: 'Privacy PWA',
+      icon: ShieldAlert,
+      colorBg: 'bg-violet-50 dark:bg-violet-950/60',
+      colorText: 'text-violet-600 dark:text-violet-400',
+      colorBorder: 'border-violet-200 dark:border-violet-800',
+      action: () => {
+        if (onOpenOmniSafeBrowser) {
+          onOpenOmniSafeBrowser();
+        } else {
+          miniBrowser.openBrowser('https://omnisafe-browser.vercel.app/', 'web');
+        }
+      },
+    },
+    {
+      id: 'payment-gateway-hub',
+      titleBn: 'Stripe & Gmail পেমেন্ট গেটওয়ে হাব',
+      titleEn: 'Stripe & Gmail Payment Gateway Hub',
+      descBn: 'সেফ Stripe টেস্টিং প্যানেল, পেমেন্ট সিমুলেটর, সাবস্ক্রিপশন ম্যানেজার, ওয়েবহুক ইন্সপেক্টর ও জিমেইল রিসিট ডিসপ্যাচার সরাসরি আইফ্রেমে দেখুন।',
+      descEn: 'Safe Stripe testing panel, payment simulator, subscription manager, webhook inspector & Gmail receipts.',
+      category: 'core',
+      badge: 'PaymentHub',
+      icon: CreditCard,
+      colorBg: 'bg-indigo-50 dark:bg-indigo-950/60',
+      colorText: 'text-indigo-600 dark:text-indigo-400',
+      colorBorder: 'border-indigo-200 dark:border-indigo-800',
+      action: () => {
+        if (onOpenPaymentGatewayHub) {
+          onOpenPaymentGatewayHub();
+        } else {
+          miniBrowser.openBrowser('https://stripe-gmail-payment-gateway-hub.vercel.app/', 'web');
+        }
+      },
+    },
+    {
+      id: 'video-audio-downloader',
+      titleBn: 'Universal Video & Audio ডাউনলোডার',
+      titleEn: 'Universal Video & Audio Downloader',
+      descBn: 'YouTube, Facebook ও Instagram থেকে MP3 এবং HD MP4 ভিডিও ডাউনলোড, ব্যাচ প্রসেসিং কিউ ও SD কার্ড স্টোরেজ সরাসরি আইফ্রেমে দেখুন।',
+      descEn: 'Download MP3 and HD MP4 videos from YouTube, Facebook & Instagram with batch queue & history backup.',
+      category: 'tools',
+      badge: 'MP3 / MP4',
+      icon: Download,
+      colorBg: 'bg-rose-50 dark:bg-rose-950/60',
+      colorText: 'text-rose-600 dark:text-rose-400',
+      colorBorder: 'border-rose-200 dark:border-rose-800',
+      action: () => {
+        if (onOpenVideoAudioDownloader) {
+          onOpenVideoAudioDownloader();
+        } else {
+          miniBrowser.openBrowser('https://rubel-video-audio-downloader.ai.studio/', 'web');
+        }
+      },
+    },
+    {
+      id: 'payhub-disbursement',
+      titleBn: 'PayHub ডিসবার্সমেন্ট ও রিসিট PWA',
+      titleEn: 'PayHub Gateway & Gmail Disbursement PWA',
+      descBn: 'Stripe, bKash এবং Nagad B2C পে-আউট, অটোমেটেড Gmail API রিসিট ও ট্রানজ্যাকশন লেজার সরাসরি আইফ্রেমে দেখুন।',
+      descEn: 'Stripe, bKash & Nagad B2C disbursements with automated Gmail API receipts and transaction ledger.',
+      category: 'core',
+      badge: 'bKash / Nagad',
+      icon: Wallet,
+      colorBg: 'bg-teal-50 dark:bg-teal-950/60',
+      colorText: 'text-teal-600 dark:text-teal-400',
+      colorBorder: 'border-teal-200 dark:border-teal-800',
+      action: () => {
+        if (onOpenPayHubDisbursement) {
+          onOpenPayHubDisbursement();
+        } else {
+          miniBrowser.openBrowser('https://pay-hub-gateway-gmail-disbursement.vercel.app/', 'web');
+        }
+      },
+    },
+    {
+      id: 'uae-visa-hub',
+      titleBn: 'UAE & Dubai Visa AI Hub',
+      titleEn: 'UAE & Dubai Visa AI Hub',
+      descBn: 'দুবাই ও UAE ভিসা ডকুমেন্ট অডিটর, পাসপোর্ট OCR অ্যানালাইজার, ফটো ভ্যালিডেটর এবং ভিসা এলিজিবিলিটি ক্যালকুলেটর সরাসরি আইফ্রেমে দেখুন।',
+      descEn: 'AI-powered UAE & Dubai visa document auditor, passport OCR analyzer, photo validator & eligibility calculator.',
+      category: 'citizen',
+      badge: 'UAE Visa AI',
+      icon: Plane,
+      colorBg: 'bg-amber-50 dark:bg-amber-950/60',
+      colorText: 'text-amber-600 dark:text-amber-400',
+      colorBorder: 'border-amber-200 dark:border-amber-800',
+      action: () => {
+        if (onOpenUaeVisaHub) {
+          onOpenUaeVisaHub();
+        } else {
+          miniBrowser.openBrowser('https://uae-dubai-visa-ai-hub-e981.vercel.app/', 'web');
+        }
+      },
+    },
+    {
+      id: 'apk-editor-studio',
+      titleBn: 'APK Editor & Studio',
+      titleEn: 'APK Editor & Studio',
+      descBn: 'APK ডিকম্পাইলার, Smali ও XML রিসোর্স এডিটর, Keystore সাইনিং ম্যানেজার, QR কোড ইনস্টলার এবং PWA-to-APK বিল্ডার সরাসরি আইফ্রেমে দেখুন।',
+      descEn: 'Full-featured APK decompiler, Smali/XML editor, keystore signing manager, QR install guide, PWA-to-APK builder & Gmail export.',
+      category: 'tools',
+      badge: 'APK Builder',
+      icon: Package,
+      colorBg: 'bg-lime-50 dark:bg-lime-950/60',
+      colorText: 'text-emerald-600 dark:text-lime-400',
+      colorBorder: 'border-lime-200 dark:border-lime-800',
+      action: () => {
+        if (onOpenApkEditorStudio) {
+          onOpenApkEditorStudio();
+        } else {
+          miniBrowser.openBrowser('https://apk-editor-studio-enbz.vercel.app/', 'web');
+        }
+      },
+    },
+    {
+      id: 'pulse-sms',
+      titleBn: 'Pulse SMS (ওয়েব ও এআই)',
+      titleEn: 'Pulse SMS - Desktop & AI Companion',
+      descBn: 'কম্পিউটার থেকে রিয়েল-টাইম এসএমএস পাঠানো, দ্রুত ওটিপি কপি, Android-Web সিঙ্ক ও Google Gemini AI স্প্যাম প্রটেকশন সরাসরি আইফ্রেমে ব্যবহার করুন।',
+      descEn: 'Send real-time SMS from desktop, copy OTPs, sync Android & Web, and get Gemini AI spam protection.',
+      category: 'comms',
+      badge: 'SMS / OTP',
+      icon: MessagesSquare,
+      colorBg: 'bg-blue-50 dark:bg-blue-950/60',
+      colorText: 'text-blue-600 dark:text-blue-400',
+      colorBorder: 'border-blue-200 dark:border-blue-800',
+      action: () => {
+        if (onOpenPulseSms) {
+          onOpenPulseSms();
+        } else {
+          miniBrowser.openBrowser('https://pulse-sms-2oc5.vercel.app/?source=pwa', 'web');
+        }
+      },
+    },
+    {
       id: 'export-chat',
       titleBn: 'চ্যাট হিস্টোরি এক্সপোর্ট',
       titleEn: 'Export Chat (PDF, JSON, MD)',
@@ -341,6 +619,44 @@ export const MobileProgramsHubModal: React.FC<MobileProgramsHubModalProps> = ({
       colorText: 'text-emerald-600 dark:text-emerald-400',
       colorBorder: 'border-emerald-200 dark:border-emerald-800',
       action: onOpenShareModal,
+    },
+    {
+      id: 'mobile-cct-guide',
+      titleBn: 'মোবাইল CCT ও WebView গাইড',
+      titleEn: 'Chrome Custom Tabs & In-App Browser Hub',
+      descBn: 'মোবাইল ও হাইব্রিড অ্যাপে (Android, Flutter, React Native, TWA) 403 disallowed_useragent এরর ছাড়া নিরাপদ গুগল লগইন ও ব্রাউজিং ব্লুপ্রিন্ট।',
+      descEn: 'Official integration blueprints for Chrome Custom Tabs, SFSafariViewController, and OAuth WebView fix.',
+      category: 'core',
+      badge: 'CCT 100%',
+      icon: Smartphone,
+      colorBg: 'bg-cyan-50 dark:bg-cyan-950/60',
+      colorText: 'text-cyan-600 dark:text-cyan-400',
+      colorBorder: 'border-cyan-200 dark:border-cyan-800',
+      action: () => {
+        if (onOpenMobileCCTGuide) {
+          onOpenMobileCCTGuide();
+        } else if (onOpenDeveloperApi) {
+          onOpenDeveloperApi();
+        }
+      },
+    },
+    {
+      id: 'notification-center',
+      titleBn: 'নোটিফিকেশন ও পুশ এলার্ট',
+      titleEn: 'Push Notification & Reminder Center',
+      descBn: 'রিয়েল-টাইম পুশ এলার্ট, কাস্টম রুটিন শিডিউলার, এআই কোডিং নোটিফিকেশন ও ফ্রিল্যান্স আপডেট।',
+      descEn: 'Real-time push alerts, custom routine reminders, AI task completion, and freelance notifications.',
+      category: 'tools',
+      badge: unreadCount > 0 ? `${unreadCount}টি নতুন` : 'পুশ এলার্ট',
+      icon: Bell,
+      colorBg: 'bg-blue-50 dark:bg-blue-950/60',
+      colorText: 'text-blue-600 dark:text-blue-400',
+      colorBorder: 'border-blue-200 dark:border-blue-800',
+      action: () => {
+        if (onOpenNotificationModal) {
+          onOpenNotificationModal();
+        }
+      },
     },
   ];
 

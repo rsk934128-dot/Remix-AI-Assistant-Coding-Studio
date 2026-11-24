@@ -20,7 +20,18 @@ import {
   PinOff,
   Globe,
   BarChart3,
-  Mail
+  Mail,
+  Key,
+  Tv,
+  Briefcase,
+  ShieldAlert,
+  CreditCard,
+  Wallet,
+  Plane,
+  Package,
+  MessagesSquare,
+  Rocket,
+  BookMarked
 } from 'lucide-react';
 import { ProjectMetricsModal } from './components/ProjectMetricsModal';
 import { ChatMessage, ChatSession, AssistantMode } from './types';
@@ -32,6 +43,7 @@ import { ChatInput } from './components/ChatInput';
 import { ArchitectureModal } from './components/ArchitectureModal';
 import { CodePreviewModal } from './components/CodePreviewModal';
 import { ExportModal } from './components/ExportModal';
+import { ChatPrintPreviewModal } from './components/ChatPrintPreviewModal';
 import { EmailComposerModal } from './components/EmailComposerModal';
 import { ShareModal } from './components/ShareModal';
 import { HostingDiagnosticModal } from './components/HostingDiagnosticModal';
@@ -55,10 +67,31 @@ import { MobileProgramsHubModal } from './components/MobileProgramsHubModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { UniversalShareReceiverModal } from './components/UniversalShareReceiverModal';
 import { RubelNetFirebaseManagerModal } from './components/RubelNetFirebaseManagerModal';
+import { YouTubeAuthModal } from './components/YouTubeAuthModal';
+import { DeveloperApiModal } from './components/DeveloperApiModal';
+import { MobileCCTGuideModal } from './components/MobileCCTGuideModal';
 import { GlobalDropZone } from './components/GlobalDropZone';
+import { NotificationModal } from './components/NotificationModal';
+import { NotificationToastBanner } from './components/NotificationToastBanner';
+import { UniversalMediaStudioModal } from './components/UniversalMediaStudioModal';
+import { ShurukkhaHubModal } from './components/ShurukkhaHubModal';
+import { PortfolioPwaModal } from './components/PortfolioPwaModal';
+import { OmniSafeBrowserModal } from './components/OmniSafeBrowserModal';
+import { PaymentGatewayHubModal } from './components/PaymentGatewayHubModal';
+import { VideoAudioDownloaderModal } from './components/VideoAudioDownloaderModal';
+import { PayHubDisbursementModal } from './components/PayHubDisbursementModal';
+import { UaeVisaHubModal } from './components/UaeVisaHubModal';
+import { ApkEditorStudioModal } from './components/ApkEditorStudioModal';
+import { PulseSmsModal } from './components/PulseSmsModal';
+import { AIPictureStudioModal } from './components/AIPictureStudioModal';
+import { GitHubBusinessHubModal, GitHubRepoSummary } from './components/GitHubBusinessHubModal';
+import { EmailTemplatesLibraryModal, TemplateInitialDraft } from './components/EmailTemplatesLibraryModal';
+import { HorizontalProgramScroller } from './components/HorizontalProgramScroller';
+import { useNotifications } from './context/NotificationContext';
 import { parseIncomingShareParams, InboundSharedContent } from './utils/shareUtils';
 import { useAuth } from './context/AuthContext';
 import { saveSessionToCloud, loadSessionsFromCloud, deleteSessionFromCloud } from './lib/firebase';
+import { authenticatedFetch } from './utils/apiAuth';
 import workspaceHeroImg from './assets/images/ai_workspace_hero_1790066671032.jpg';
 import apiArchitectureImg from './assets/images/api_architecture_graphic_1790066692425.jpg';
 
@@ -90,7 +123,18 @@ export default function App() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((s: ChatSession) => ({
+            ...s,
+            messages: Array.isArray(s.messages)
+              ? s.messages.map((m) => ({
+                  ...m,
+                  isStreaming: false,
+                  isGeneratingSmartReplies: false,
+                }))
+              : [],
+          }));
+        }
       }
     } catch (e) {
       console.error('Failed to parse saved sessions', e);
@@ -102,7 +146,7 @@ export default function App() {
       updatedAt: Date.now(),
       messages: [],
       mode: 'general',
-      enableSearch: true,
+      enableSearch: false,
     };
     return [initialSession];
   });
@@ -118,6 +162,7 @@ export default function App() {
   const [liveLocationModalOpen, setLiveLocationModalOpen] = useState(false);
   const [isGoogleDriveOpen, setIsGoogleDriveOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const [ttsSettingsModalOpen, setTtsSettingsModalOpen] = useState(false);
   const [founderProfileModalOpen, setFounderProfileModalOpen] = useState(false);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
@@ -134,8 +179,37 @@ export default function App() {
   // Inbound Web Share Target and External Content Ingest state
   const [shareReceiverOpen, setShareReceiverOpen] = useState(false);
   const [rubelNetManagerOpen, setRubelNetManagerOpen] = useState(false);
+  const [youtubeAuthModalOpen, setYoutubeAuthModalOpen] = useState(false);
+  const [developerApiModalOpen, setDeveloperApiModalOpen] = useState(false);
+  const [mobileCctGuideModalOpen, setMobileCctGuideModalOpen] = useState(false);
+  const [notificationModalOpen, setNotificationModalOpen] = useState(false);
+  const [mediaStudioOpen, setMediaStudioOpen] = useState(false);
+  const [pictureStudioOpen, setPictureStudioOpen] = useState(false);
+  const [pictureStudioInitialPrompt, setPictureStudioInitialPrompt] = useState('');
+  const [shurukkhaHubOpen, setShurukkhaHubOpen] = useState(false);
+  const [portfolioPwaOpen, setPortfolioPwaOpen] = useState(false);
+  const [omniSafeBrowserOpen, setOmniSafeBrowserOpen] = useState(false);
+  const [paymentGatewayHubOpen, setPaymentGatewayHubOpen] = useState(false);
+  const [videoAudioDownloaderOpen, setVideoAudioDownloaderOpen] = useState(false);
+  const [payHubDisbursementOpen, setPayHubDisbursementOpen] = useState(false);
+  const [uaeVisaHubOpen, setUaeVisaHubOpen] = useState(false);
+  const [apkEditorStudioOpen, setApkEditorStudioOpen] = useState(false);
+  const [pulseSmsOpen, setPulseSmsOpen] = useState(false);
+  const [githubBusinessHubOpen, setGithubBusinessHubOpen] = useState(false);
+  const [selectedBusinessRepo, setSelectedBusinessRepo] = useState<GitHubRepoSummary | null>(null);
+  const [emailTemplatesModalOpen, setEmailTemplatesModalOpen] = useState(false);
+  const [emailTemplatesDraft, setEmailTemplatesDraft] = useState<TemplateInitialDraft | null>(null);
+  const [emailTemplatesReturnTarget, setEmailTemplatesReturnTarget] = useState<'composer' | 'github-hub'>('composer');
+  const [injectedHubTemplate, setInjectedHubTemplate] = useState<{
+    subject: string;
+    body: string;
+    language: 'bn' | 'en';
+    recipientHint?: string;
+    appliedAt: number;
+  } | null>(null);
   const [incomingSharedItem, setIncomingSharedItem] = useState<InboundSharedContent | null>(null);
   const [sharedAlertToast, setSharedAlertToast] = useState<string | null>(null);
+  const { sendNotification } = useNotifications();
 
   // Detect incoming share target parameters from URL (PWA Web Share Target)
   useEffect(() => {
@@ -239,6 +313,20 @@ export default function App() {
       isOpen: true,
       tab,
     });
+  };
+
+  const handleOpenGitHubBusinessHub = (repo?: GitHubRepoSummary) => {
+    setSelectedBusinessRepo(repo || null);
+    setGithubBusinessHubOpen(true);
+  };
+
+  const handleOpenEmailTemplatesLibrary = (
+    draft?: TemplateInitialDraft | null,
+    returnTarget: 'composer' | 'github-hub' = 'composer'
+  ) => {
+    setEmailTemplatesDraft(draft || null);
+    setEmailTemplatesReturnTarget(returnTarget);
+    setEmailTemplatesModalOpen(true);
   };
 
   const locationState = useLiveLocation();
@@ -381,6 +469,12 @@ export default function App() {
       if (cloudSessions && cloudSessions.length > 0) {
         setSessions(cloudSessions);
       }
+      sendNotification({
+        title: 'ক্লাউড সিঙ্ক সম্পন্ন হয়েছে ☁️',
+        body: 'আপনার সমস্ত কথোপকথন ও কোড সেশন সফলভাবে ক্লাউডে ব্যাকআপ করা হয়েছে।',
+        category: 'system',
+        priority: 'low',
+      });
     } catch (e) {
       console.error('Manual sync error', e);
     } finally {
@@ -424,7 +518,7 @@ export default function App() {
       updatedAt: Date.now(),
       messages: [],
       mode: 'general',
-      enableSearch: true,
+      enableSearch: false,
     };
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
@@ -522,7 +616,7 @@ export default function App() {
     try {
       let conciseTitle = '';
       try {
-        const response = await fetch('/api/session/title', {
+        const response = await authenticatedFetch('/api/session/title', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -574,6 +668,106 @@ export default function App() {
     }
   };
 
+  /**
+   * Analyzes the latest AI response via /api/chat/smart-replies and attaches
+   * up to 3 contextual follow-up question/action chips at the bottom of the message.
+   */
+  const generateSmartReplies = async (
+    targetSessionId: string,
+    assistantMsgId: string,
+    userText: string,
+    assistantText: string,
+    sessionMode: AssistantMode
+  ) => {
+    const cleanAssistant = (assistantText || '').trim();
+    if (!targetSessionId || !assistantMsgId || !cleanAssistant) return;
+    if (cleanAssistant.startsWith('দুঃখিত, কোনো উত্তর পাওয়া যায়নি')) return;
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === targetSessionId
+          ? {
+              ...s,
+              messages: s.messages.map((m) =>
+                m.id === assistantMsgId ? { ...m, isGeneratingSmartReplies: true } : m
+              ),
+            }
+          : s
+      )
+    );
+
+    try {
+      const response = await authenticatedFetch('/api/chat/smart-replies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userMessage: userText,
+          assistantMessage: cleanAssistant.slice(0, 4500),
+          mode: sessionMode,
+        }),
+      });
+
+      if (response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('text/html')) {
+          const data = await response.json();
+          const suggestions = Array.isArray(data?.suggestions) ? data.suggestions.slice(0, 3) : [];
+          if (suggestions.length > 0) {
+            setSessions((prev) =>
+              prev.map((s) =>
+                s.id === targetSessionId
+                  ? {
+                      ...s,
+                      messages: s.messages.map((m) =>
+                        m.id === assistantMsgId
+                          ? { ...m, smartReplies: suggestions, isGeneratingSmartReplies: false }
+                          : m
+                      ),
+                    }
+                  : s
+              )
+            );
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Smart reply generation notice:', err);
+    } finally {
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === targetSessionId
+            ? {
+                ...s,
+                messages: s.messages.map((m) =>
+                  m.id === assistantMsgId ? { ...m, isGeneratingSmartReplies: false } : m
+                ),
+              }
+            : s
+        )
+      );
+    }
+  };
+
+  const handleRefreshSmartReplies = (messageId: string) => {
+    const msgIdx = activeSession.messages.findIndex((m) => m.id === messageId);
+    if (msgIdx === -1) return;
+    const assistantMsg = activeSession.messages[msgIdx];
+    if (!assistantMsg || assistantMsg.role !== 'assistant' || !assistantMsg.text) return;
+
+    const prevUserMsg = [...activeSession.messages.slice(0, msgIdx)]
+      .reverse()
+      .find((m) => m.role === 'user');
+
+    generateSmartReplies(
+      activeSession.id,
+      assistantMsg.id,
+      prevUserMsg?.text || '',
+      assistantMsg.text,
+      assistantMsg.mode || activeSession.mode || mode
+    );
+  };
+
   const executeChatStream = async (
     updatedMessages: ChatMessage[],
     promptText: string,
@@ -594,7 +788,7 @@ export default function App() {
       // We perform an automatic fast-retry on transient 5xx errors before failing.
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          response = await fetch('/api/chat/stream', {
+          response = await authenticatedFetch('/api/chat/stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -691,6 +885,15 @@ export default function App() {
 
         if (isFirstTurn && accumulatedText.trim() && (targetSessionId || activeSessionId)) {
           generateSessionTitle(targetSessionId || activeSessionId, promptText, finalAssistantText, mode);
+        }
+        if (accumulatedText.trim() && (targetSessionId || activeSessionId)) {
+          generateSmartReplies(
+            targetSessionId || activeSessionId,
+            assistantMsgId,
+            promptText,
+            finalAssistantText,
+            mode
+          );
         }
         return;
       }
@@ -809,6 +1012,15 @@ export default function App() {
         if (isFirstTurn && accumulatedText.trim() && targetSessionId) {
           generateSessionTitle(targetSessionId, promptText, finalAssistantText, mode);
         }
+        if (accumulatedText.trim() && (targetSessionId || activeSessionId)) {
+          generateSmartReplies(
+            targetSessionId || activeSessionId,
+            assistantMsgId,
+            promptText,
+            finalAssistantText,
+            mode
+          );
+        }
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
@@ -831,6 +1043,152 @@ export default function App() {
     } finally {
       setIsGenerating(false);
       abortControllerRef.current = null;
+    }
+  };
+
+  const isImageGenerationRequest = (text: string): boolean => {
+    const t = text.toLowerCase().trim();
+    if (t.includes('সরাসরি ছবি আঁকার ক্ষমতা আমার নেই') || t.includes('আমি একজন কৃত্রিম বুদ্ধিমত্তা')) {
+      return false;
+    }
+    if (/\b(how to|code|react|component|css|html|api|function|কোড|এইচটিএমএল|কিভাবে|ক্লিক)\b/i.test(t)) {
+      return false;
+    }
+
+    const hasImageWord = /(ছবি|পিকচার|ইমেজ|চিত্র|ফটো|আর্ট|ওয়ালপেপার|drawing|illustration)/i.test(t);
+    const hasActionWord = /(আঁকো|আঁকা|এঁকে|বানাও|বানান|বানিয়ে|তৈরি|জেনারেট|দাও|দেখাও|করুন|কর|চাই|প্রয়োজন|দেখান|অঙ্কন|ড্রয়িং)/i.test(t);
+    if (hasImageWord && hasActionWord) return true;
+
+    // Ends with image word, e.g. "কক্সবাজার সমুদ্র সৈকত ও নৌকার ছবি"
+    if (/(ছবি|পিকচার|ইমেজ|ফটো)$/i.test(t) && hasImageWord) {
+      return true;
+    }
+
+    const directBn = [
+      /ছবি\s*আঁক/i,
+      /ছবি\s*দাও/i,
+      /ছবি\s*দেখাও/i,
+      /ছবি\s*বানাও/i,
+      /ছবি\s*তৈরি/i,
+      /পিকচার\s*বানাও/i,
+      /পিকচার\s*তৈরি/i,
+      /ইমেজ\s*তৈরি/i,
+      /(একটি|একটা|সুন্দর|নতুন)\s*(ছবি|পিকচার|ইমেজ)/i,
+      /আর্ট\s*তৈরি/i,
+    ];
+    if (directBn.some((p) => p.test(t))) return true;
+
+    const enPatterns = [
+      /\b(generate|create|draw|make|paint|render|show|produce)\s+(an?\s+)?(image|picture|photo|illustration|art|drawing|painting|wallpaper)\b/i,
+      /\b(image|picture|photo|art|drawing)\s+(of|for|showing|depicting|with)\b/i,
+      /\b(draw|paint)\s+me\b/i,
+      /\bdraw\s+a\b/i,
+    ];
+    return enPatterns.some((p) => p.test(t));
+  };
+
+  const executeImageGeneration = async (
+    updatedMessages: ChatMessage[],
+    promptText: string,
+    assistantMsgId: string,
+    targetSessionId?: string
+  ) => {
+    setIsGenerating(true);
+    // Indicate that the picture is being painted
+    updateActiveSession((s) => ({
+      ...s,
+      messages: s.messages.map((m) =>
+        m.id === assistantMsgId
+          ? {
+              ...m,
+              text: '🎨 আপনার নির্দেশ অনুযায়ী ছবি আঁকা হচ্ছে... অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন।',
+              isStreaming: true,
+            }
+          : m
+      ),
+    }));
+
+    try {
+      // Clean prompt of command prefixes and suffixes (e.g. "কক্সবাজার সমুদ্র সৈকত ও নৌকার ছবি এঁকে দাও" -> "কক্সবাজার সমুদ্র সৈকত ও নৌকা")
+      let cleanPrompt = promptText
+        .replace(/^(একটি|একটা)?\s*(সুন্দর|নতুন)?\s*(ছবি|পিকচার|ইমেজ)\s*(তৈরি\s*করো|বানাও|বানিয়ে\s*দাও|আঁকো|দাও|জেনারেট\s*করো|করুন|কর)\s*[:ঃ,-]?\s*/i, '')
+        .replace(/^(generate\s+image|create\s+image|draw\s+a\s+picture\s+of|draw\s+an\s+image\s+of|make\s+a\s+picture\s+of)\s*[:ঃ,-]?\s*/i, '')
+        .replace(/\s*(এর)?\s*(ছবি|পিকচার|ইমেজ)?\s*(এঁকে\s*দাও|আঁকো|বানাও|তৈরি\s*করো|বানিয়ে\s*দাও|দাও|চাই|প্রয়োজন|দেখাও)$/i, '')
+        .trim();
+      if (!cleanPrompt || cleanPrompt.length < 3) cleanPrompt = promptText;
+
+      const response = await authenticatedFetch('/api/image/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: cleanPrompt,
+          aspectRatio: '1:1',
+          style: 'photorealistic',
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'ছবি তৈরি করতে ব্যর্থ হয়েছে');
+      }
+
+      updateActiveSession((s) => ({
+        ...s,
+        messages: s.messages.map((m) =>
+          m.id === assistantMsgId
+            ? {
+                ...m,
+                text: `আপনার নির্দেশ অনুযায়ী সুন্দর ছবিটি তৈরি করা হয়েছে! নিচের প্রিভিউ থেকে ছবিটি দেখে নিন এবং **'ডাউনলোড করুন'** বাটনে ক্লিক করে ফুল রেজোলিউশনে নামিয়ে নিন।\n\n**প্রম্পট:** ${data.prompt}`,
+                generatedImage: {
+                  url: data.imageUrl,
+                  prompt: data.prompt,
+                  aspectRatio: data.aspectRatio,
+                  width: data.width,
+                  height: data.height,
+                  mimeType: data.mimeType,
+                  source: data.source,
+                  createdAt: Date.now(),
+                },
+                isStreaming: false,
+              }
+            : m
+        ),
+      }));
+
+      // Update session title if first message
+      if (activeSession.messages.length <= 1) {
+        const titlePrompt = `ছবি: ${cleanPrompt.slice(0, 24)}`;
+        setSessions((prev) =>
+          prev.map((s) => (s.id === targetSessionId ? { ...s, title: titlePrompt } : s))
+        );
+      }
+
+      if (targetSessionId || activeSessionId) {
+        generateSmartReplies(
+          targetSessionId || activeSessionId,
+          assistantMsgId,
+          promptText,
+          `তৈরিকৃত ছবির বিষয়: ${data.prompt || cleanPrompt}`,
+          mode
+        );
+      }
+    } catch (err: any) {
+      console.error('In-chat image generation failed:', err);
+      updateActiveSession((s) => ({
+        ...s,
+        messages: s.messages.map((m) =>
+          m.id === assistantMsgId
+            ? {
+                ...m,
+                text: 'দুঃখিত, ছবিটি তৈরি করা সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+                error: err?.message || 'ছবি তৈরি করতে ব্যর্থ হয়েছে',
+                isStreaming: false,
+              }
+            : m
+        ),
+      }));
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -876,6 +1234,12 @@ export default function App() {
       title: newTitle,
       messages: [...updatedMessages, initialAssistantMessage],
     }));
+
+    // If user asked to generate a picture / image
+    if (isImageGenerationRequest(textToSend)) {
+      await executeImageGeneration(updatedMessages, textToSend, assistantMsgId, currentSessionId);
+      return;
+    }
 
     await executeChatStream(updatedMessages, textToSend, assistantMsgId, isFirstTurn, currentSessionId);
   };
@@ -943,7 +1307,7 @@ export default function App() {
   return (
     <MusicPlayerProvider>
       <MiniBrowserProvider>
-        <div className="flex h-screen w-full overflow-hidden bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 antialiased">
+        <div id="app-main-shell" className="flex h-screen w-full overflow-hidden bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 antialiased">
         {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -968,6 +1332,22 @@ export default function App() {
         onOpenShare={handleOpenShareModal}
         onOpenShareReceiver={() => setShareReceiverOpen(true)}
         onOpenRubelNetManager={() => setRubelNetManagerOpen(true)}
+        onOpenYouTubeAuth={() => setYoutubeAuthModalOpen(true)}
+        onOpenDeveloperApi={() => setDeveloperApiModalOpen(true)}
+        onOpenNotificationModal={() => setNotificationModalOpen(true)}
+        onOpenMediaStudio={() => setMediaStudioOpen(true)}
+        onOpenPictureStudio={() => setPictureStudioOpen(true)}
+        onOpenShurukkhaHub={() => setShurukkhaHubOpen(true)}
+        onOpenPortfolioPwa={() => setPortfolioPwaOpen(true)}
+        onOpenOmniSafeBrowser={() => setOmniSafeBrowserOpen(true)}
+        onOpenPaymentGatewayHub={() => setPaymentGatewayHubOpen(true)}
+        onOpenVideoAudioDownloader={() => setVideoAudioDownloaderOpen(true)}
+        onOpenPayHubDisbursement={() => setPayHubDisbursementOpen(true)}
+        onOpenUaeVisaHub={() => setUaeVisaHubOpen(true)}
+        onOpenApkEditorStudio={() => setApkEditorStudioOpen(true)}
+        onOpenPulseSms={() => setPulseSmsOpen(true)}
+        onOpenGitHubBusinessHub={() => handleOpenGitHubBusinessHub()}
+        onOpenEmailTemplatesLibrary={() => handleOpenEmailTemplatesLibrary(null, 'composer')}
         onSelectMode={setMode}
         currentMode={mode}
       />
@@ -979,6 +1359,7 @@ export default function App() {
           onOpenArchitecture={() => setArchitectureModalOpen(true)}
           onOpenHostingDiagnostic={() => setHostingModalOpen(true)}
           onOpenCitizenServices={() => setCitizenModalOpen(true)}
+          onOpenShurukkhaHub={() => setShurukkhaHubOpen(true)}
           onOpenFreelanceAgent={() => setFreelanceAgentModalOpen(true)}
           onOpenUniversalApps={handleOpenUniversalApps}
           onOpenMetrics={() => setMetricsModalOpen(true)}
@@ -989,9 +1370,25 @@ export default function App() {
           onOpenMobilePrograms={() => setMobileProgramsHubOpen(true)}
           onOpenShareReceiver={() => setShareReceiverOpen(true)}
           onOpenRubelNetManager={() => setRubelNetManagerOpen(true)}
+          onOpenYouTubeAuth={() => setYoutubeAuthModalOpen(true)}
+          onOpenDeveloperApi={() => setDeveloperApiModalOpen(true)}
+          onOpenNotificationModal={() => setNotificationModalOpen(true)}
+          onOpenMediaStudio={() => setMediaStudioOpen(true)}
+          onOpenPictureStudio={() => setPictureStudioOpen(true)}
+          onOpenPortfolioPwa={() => setPortfolioPwaOpen(true)}
+          onOpenOmniSafeBrowser={() => setOmniSafeBrowserOpen(true)}
+          onOpenPaymentGatewayHub={() => setPaymentGatewayHubOpen(true)}
+          onOpenVideoAudioDownloader={() => setVideoAudioDownloaderOpen(true)}
+          onOpenPayHubDisbursement={() => setPayHubDisbursementOpen(true)}
+          onOpenUaeVisaHub={() => setUaeVisaHubOpen(true)}
+          onOpenApkEditorStudio={() => setApkEditorStudioOpen(true)}
+          onOpenPulseSms={() => setPulseSmsOpen(true)}
+          onOpenGitHubBusinessHub={() => handleOpenGitHubBusinessHub()}
+          onOpenEmailTemplatesLibrary={() => handleOpenEmailTemplatesLibrary(null, 'composer')}
           onNewChat={handleNewChat}
           onClearChat={handleClearChat}
           onExportChat={handleExportChat}
+          onExportChatToPDF={() => setPrintPreviewOpen(true)}
           onOpenShareModal={handleOpenShareModal}
           onSyncAll={handleSyncAll}
           mode={mode}
@@ -1026,8 +1423,12 @@ export default function App() {
                   কোডিং ও সফটওয়্যার ডেভেলপমেন্ট, লেখালেখি, মাইক্রোফোনে বাংলা/ইংরেজি ভয়েস কমান্ড এবং Google Search গ্রাউন্ডিং সহ রিয়েল-টাইম গবেষণা—যেকোনো প্রশ্ন লিখুন বা মুখে বলুন।
                 </p>
 
-                {/* Hero Quick Share & Action Buttons */}
-                <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                {/* Hero Quick Share & Action Buttons (Horizontal Left/Right Scrollable Carousel) */}
+                <HorizontalProgramScroller
+                  variant="hero"
+                  label="সব প্রোগ্রাম (ডানে-বামে স্ক্রল করে একে একে দেখুন)"
+                  className="pt-1 text-left"
+                >
                   <button
                     id="hero-universal-apps-btn"
                     onClick={() => handleOpenUniversalApps('apps')}
@@ -1039,6 +1440,16 @@ export default function App() {
                   </button>
 
                   <button
+                    id="hero-github-business-btn"
+                    onClick={() => handleOpenGitHubBusinessHub()}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="GitHub প্রজেক্ট আইডিয়া, SMS ক্যাম্পেইন, অটো-Gmail প্রেরণ, মার্কেটিং ও বিজনেস লার্নিং"
+                  >
+                    <Rocket className="w-4 h-4 text-emerald-100 group-hover:scale-110 transition-transform" />
+                    <span>GitHub বিজনেস ও অটো-Gmail</span>
+                  </button>
+
+                  <button
                     id="hero-metrics-btn"
                     onClick={() => setMetricsModalOpen(true)}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
@@ -1046,6 +1457,16 @@ export default function App() {
                   >
                     <BarChart3 className="w-4 h-4 text-purple-200 group-hover:scale-110 transition-transform" />
                     <span>মেট্রিক্স ও অ্যানালিটিক্স (Charts)</span>
+                  </button>
+
+                  <button
+                    id="hero-media-studio-btn"
+                    onClick={() => setMediaStudioOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-600 to-blue-600 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="যেকোনো ভিডিও লিংক প্লে এবং যেকোনো ছবি/ইমেজ দেখার ইউনিভার্সাল স্টুডিও"
+                  >
+                    <Tv className="w-4 h-4 text-cyan-200 group-hover:scale-110 transition-transform" />
+                    <span>যেকোনো ভিডিও ও ইমেজ প্লেয়ার</span>
                   </button>
 
                   <button
@@ -1079,6 +1500,16 @@ export default function App() {
                   </button>
 
                   <button
+                    id="hero-email-templates-btn"
+                    onClick={() => handleOpenEmailTemplatesLibrary(null, 'composer')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="ইমেইল টেমপ্লেট লাইব্রেরি — Marketing, Collaboration ও Follow-up"
+                  >
+                    <BookMarked className="w-4 h-4 text-amber-100 group-hover:scale-110 transition-transform" />
+                    <span>ইমেইল টেমপ্লেট লাইব্রেরি</span>
+                  </button>
+
+                  <button
                     id="hero-share-app-btn"
                     onClick={() =>
                       handleOpenShareModal({
@@ -1095,14 +1526,94 @@ export default function App() {
                   </button>
 
                   <button
+                    id="hero-portfolio-pwa-btn"
+                    onClick={() => setPortfolioPwaOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="Sheikh Farid — Portfolio PWA ও প্রজেক্ট শোকেস (#projects) ইন-অ্যাপ আইফ্রেমে দেখুন"
+                  >
+                    <Briefcase className="w-4 h-4 text-sky-200 group-hover:scale-110 transition-transform" />
+                    <span>Portfolio PWA (#projects)</span>
+                  </button>
+
+                  <button
+                    id="hero-omnisafe-browser-btn"
+                    onClick={() => setOmniSafeBrowserOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="OnionShield (OmniSafe Privacy Browser & Android APK Portal)"
+                  >
+                    <ShieldAlert className="w-4 h-4 text-violet-200 group-hover:scale-110 transition-transform" />
+                    <span>OnionShield ব্রাউজার</span>
+                  </button>
+
+                  <button
+                    id="hero-payment-gateway-hub-btn"
+                    onClick={() => setPaymentGatewayHubOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-emerald-600 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="Stripe & Gmail Payment Gateway Hub — পেমেন্ট সিমুলেটর, ওয়েবহুক ও রিসিট ডিসপ্যাচার"
+                  >
+                    <CreditCard className="w-4 h-4 text-indigo-200 group-hover:scale-110 transition-transform" />
+                    <span>Stripe &amp; Gmail পেমেন্ট হাব</span>
+                  </button>
+
+                  <button
+                    id="hero-video-audio-downloader-btn"
+                    onClick={() => setVideoAudioDownloaderOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-orange-600 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="Universal Video & Audio Downloader — MP3 ও HD MP4 ডাউনলোড স্টুডিও"
+                  >
+                    <Download className="w-4 h-4 text-rose-100 group-hover:scale-110 transition-transform" />
+                    <span>Video &amp; Audio ডাউনলোডার</span>
+                  </button>
+
+                  <button
+                    id="hero-payhub-disbursement-btn"
+                    onClick={() => setPayHubDisbursementOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-teal-600 via-emerald-600 to-cyan-600 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="PayHub Gateway & Gmail Disbursement PWA — Stripe, bKash, Nagad ও জিমেইল রিসিট"
+                  >
+                    <Wallet className="w-4 h-4 text-teal-100 group-hover:scale-110 transition-transform" />
+                    <span>PayHub ডিসবার্সমেন্ট</span>
+                  </button>
+
+                  <button
+                    id="hero-uae-visa-hub-btn"
+                    onClick={() => setUaeVisaHubOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-sky-600 to-blue-700 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="UAE & Dubai Visa AI Hub — পাসপোর্ট OCR, ফটো ভ্যালিডেটর ও ভিসা এলিজিবিলিটি অডিট"
+                  >
+                    <Plane className="w-4 h-4 text-amber-100 group-hover:scale-110 transition-transform" />
+                    <span>UAE &amp; Dubai Visa AI</span>
+                  </button>
+
+                  <button
+                    id="hero-apk-editor-studio-btn"
+                    onClick={() => setApkEditorStudioOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-lime-500 via-emerald-600 to-cyan-600 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="APK Editor & Studio — Smali/XML এডিটর, Keystore সাইনিং ও PWA-to-APK বিল্ডার"
+                  >
+                    <Package className="w-4 h-4 text-lime-100 group-hover:scale-110 transition-transform" />
+                    <span>APK Editor &amp; Studio</span>
+                  </button>
+
+                  <button
+                    id="hero-pulse-sms-btn"
+                    onClick={() => setPulseSmsOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600 hover:brightness-110 active:scale-98 text-white font-semibold text-xs shadow-md transition-all cursor-pointer group"
+                    title="Pulse SMS — রিয়েল-টাইম ওয়েব এসএমএস, ওটিপি কপি ও এআই স্প্যাম প্রটেকশন"
+                  >
+                    <MessagesSquare className="w-4 h-4 text-blue-100 group-hover:scale-110 transition-transform" />
+                    <span>Pulse SMS ওয়েব</span>
+                  </button>
+
+                  <button
                     id="hero-architecture-btn"
                     onClick={() => setArchitectureModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-850 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold text-xs border border-stone-200 dark:border-stone-750 transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-850 dark:hover:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold text-xs border border-stone-200 dark:border-stone-750 transition-colors cursor-pointer"
                   >
                     <Layers className="w-4 h-4 text-amber-500" />
                     <span>AI আর্কিটেকচার গাইড</span>
                   </button>
-                </div>
+                </HorizontalProgramScroller>
               </div>
 
               {/* YouTube Music & Video In-App Fullscreen Studio (No chat required) */}
@@ -1189,6 +1700,31 @@ export default function App() {
                 </div>
                 <div className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-200 text-xs font-semibold border border-teal-500/40 backdrop-blur-xs transition-colors shrink-0">
                   <span>টুলকিট খুলুন</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+
+              {/* Developer API SaaS Platform Feature Card */}
+              <div
+                onClick={() => setDeveloperApiModalOpen(true)}
+                className="cursor-pointer group p-5 rounded-2xl bg-gradient-to-r from-blue-950 via-stone-900 to-indigo-950 text-white shadow-lg border border-blue-500/50 hover:border-blue-400 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              >
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-blue-500 text-white font-bold">
+                      SaaS & Cloud API
+                    </span>
+                    <h3 className="text-base font-bold flex items-center gap-1.5 group-hover:text-blue-300 transition-colors truncate">
+                      <Key className="w-4 h-4 text-blue-400 shrink-0" />
+                      থার্ড-পার্টি ডেভেলপার API সার্ভিস ও সিকিউর Key ম্যানেজমেন্ট
+                    </h3>
+                  </div>
+                  <p className="text-xs text-stone-300 leading-relaxed max-w-2xl">
+                    SHA-256 ক্রিপ্টোগ্রাফিক API Key ভ্যালিডেশন, স্লাইডিং-উইন্ডো রেট লিমিট (Rate Limiting), মাসিক কোটা ট্র্যাকিং, লাইভ রিকোয়েস্ট অডিট লগ এবং cURL, Node.js, Python ও PHP কোড স্নিপেট সহ পূর্ণাঙ্গ ডেভেলপার গেটওয়ে।
+                  </p>
+                </div>
+                <div className="shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-200 text-xs font-semibold border border-blue-500/40 backdrop-blur-xs transition-colors shrink-0">
+                  <span>API পোর্টাল খুলুন</span>
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
@@ -1339,7 +1875,7 @@ export default function App() {
               </div>
 
               <div className="divide-y divide-stone-100 dark:divide-stone-800/40">
-                {activeSession.messages.map((message) => (
+                {activeSession.messages.map((message, idx) => (
                   <ChatMessageItem
                     key={message.id}
                     message={message}
@@ -1358,6 +1894,14 @@ export default function App() {
                         shareType: 'message',
                       })
                     }
+                    onRegeneratePicture={(p) => handleSendMessage(`ছবি তৈরি করো: ${p}`)}
+                    onOpenPictureStudio={(p) => {
+                      setPictureStudioInitialPrompt(p);
+                      setPictureStudioOpen(true);
+                    }}
+                    onOpenTTSSettings={() => setTtsSettingsModalOpen(true)}
+                    onRefreshSmartReplies={handleRefreshSmartReplies}
+                    isLastMessage={idx === activeSession.messages.length - 1}
                     isGenerating={isGenerating}
                   />
                 ))}
@@ -1385,6 +1929,10 @@ export default function App() {
             setMode={setMode}
             onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
             onOpenShareReceiver={() => setShareReceiverOpen(true)}
+            onOpenPictureStudio={() => {
+              setPictureStudioInitialPrompt(input.trim());
+              setPictureStudioOpen(true);
+            }}
             onFocus={() => setIsChatInputFocused(true)}
             onBlur={() => setIsChatInputFocused(false)}
           />
@@ -1500,6 +2048,7 @@ export default function App() {
       <FounderProfileModal
         isOpen={founderProfileModalOpen}
         onClose={() => setFounderProfileModalOpen(false)}
+        onOpenPortfolioPwa={() => setPortfolioPwaOpen(true)}
       />
 
       {/* Universal Apps Launcher, Gmail & Messaging Hub Modal */}
@@ -1510,6 +2059,16 @@ export default function App() {
         onSendToChat={(prompt) => handleSendMessage(prompt)}
         onOpenGoogleDrive={() => setIsGoogleDriveOpen(true)}
         onOpenEmailComposer={() => handleOpenEmailComposer()}
+        onOpenShurukkhaHub={() => setShurukkhaHubOpen(true)}
+        onOpenPortfolioPwa={() => setPortfolioPwaOpen(true)}
+        onOpenOmniSafeBrowser={() => setOmniSafeBrowserOpen(true)}
+        onOpenPaymentGatewayHub={() => setPaymentGatewayHubOpen(true)}
+        onOpenVideoAudioDownloader={() => setVideoAudioDownloaderOpen(true)}
+        onOpenPayHubDisbursement={() => setPayHubDisbursementOpen(true)}
+        onOpenUaeVisaHub={() => setUaeVisaHubOpen(true)}
+        onOpenApkEditorStudio={() => setApkEditorStudioOpen(true)}
+        onOpenPulseSms={() => setPulseSmsOpen(true)}
+        onOpenGitHubBusinessHub={(repo) => handleOpenGitHubBusinessHub(repo)}
       />
 
       {/* Professional Email Composer & Drafter Modal */}
@@ -1521,6 +2080,8 @@ export default function App() {
         initialBody={emailComposerConfig.body}
         initialLanguage={emailComposerConfig.language}
         onSendToChat={(prompt) => handleSendMessage(prompt)}
+        onOpenTemplatesLibrary={() => handleOpenEmailTemplatesLibrary(null, 'composer')}
+        onSaveToTemplatesLibrary={(draft) => handleOpenEmailTemplatesLibrary(draft, 'composer')}
       />
 
       {/* Recharts Project Metrics & Chat History Analytics Modal */}
@@ -1565,6 +2126,39 @@ export default function App() {
         onOpenShareModal={handleOpenShareModal}
         onOpenShareReceiver={() => setShareReceiverOpen(true)}
         onOpenRubelNetManager={() => setRubelNetManagerOpen(true)}
+        onOpenDeveloperApi={() => setDeveloperApiModalOpen(true)}
+        onOpenMobileCCTGuide={() => setMobileCctGuideModalOpen(true)}
+        onOpenNotificationModal={() => setNotificationModalOpen(true)}
+        onOpenMediaStudio={() => setMediaStudioOpen(true)}
+        onOpenPictureStudio={() => setPictureStudioOpen(true)}
+        onOpenPortfolioPwa={() => setPortfolioPwaOpen(true)}
+        onOpenOmniSafeBrowser={() => setOmniSafeBrowserOpen(true)}
+        onOpenPaymentGatewayHub={() => setPaymentGatewayHubOpen(true)}
+        onOpenVideoAudioDownloader={() => setVideoAudioDownloaderOpen(true)}
+        onOpenPayHubDisbursement={() => setPayHubDisbursementOpen(true)}
+        onOpenUaeVisaHub={() => setUaeVisaHubOpen(true)}
+        onOpenApkEditorStudio={() => setApkEditorStudioOpen(true)}
+        onOpenPulseSms={() => setPulseSmsOpen(true)}
+        onOpenGitHubBusinessHub={() => handleOpenGitHubBusinessHub()}
+        onOpenEmailTemplatesLibrary={() => handleOpenEmailTemplatesLibrary(null, 'composer')}
+      />
+
+      {/* Push & In-App Notification Center Modal */}
+      <NotificationModal
+        isOpen={notificationModalOpen}
+        onClose={() => setNotificationModalOpen(false)}
+      />
+
+      {/* Live Floating In-App Toast Alert Banner */}
+      <NotificationToastBanner
+        onOpenModal={() => setNotificationModalOpen(true)}
+      />
+
+      {/* Universal Media Player & Image Studio Modal */}
+      <UniversalMediaStudioModal
+        isOpen={mediaStudioOpen}
+        onClose={() => setMediaStudioOpen(false)}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
       />
 
       {/* Global Drop Zone for Files, Photos, Links from other apps */}
@@ -1601,6 +2195,136 @@ export default function App() {
         onSendToChat={(prompt) => handleSendMessage(prompt)}
       />
 
+      {/* YouTube Authentication & Personal Playlists Hub Modal */}
+      <YouTubeAuthModal
+        isOpen={youtubeAuthModalOpen}
+        onClose={() => setYoutubeAuthModalOpen(false)}
+      />
+
+      {/* Developer API SaaS Platform & API Key Manager Modal */}
+      <DeveloperApiModal
+        isOpen={developerApiModalOpen}
+        onClose={() => setDeveloperApiModalOpen(false)}
+        darkMode={darkMode}
+      />
+
+      {/* Mobile Chrome Custom Tabs & In-App Browser Integration Studio Modal */}
+      <MobileCCTGuideModal
+        isOpen={mobileCctGuideModalOpen}
+        onClose={() => setMobileCctGuideModalOpen(false)}
+        darkMode={darkMode}
+      />
+
+      {/* Shurukkha Hub Live Sandboxed Iframe Modal */}
+      <ShurukkhaHubModal
+        isOpen={shurukkhaHubOpen}
+        onClose={() => setShurukkhaHubOpen(false)}
+      />
+
+      {/* Sheikh Farid Portfolio PWA Live Sandboxed Iframe Modal */}
+      <PortfolioPwaModal
+        isOpen={portfolioPwaOpen}
+        onClose={() => setPortfolioPwaOpen(false)}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
+      />
+
+      {/* OnionShield / OmniSafe Privacy Browser Proxied Iframe Modal */}
+      <OmniSafeBrowserModal
+        isOpen={omniSafeBrowserOpen}
+        onClose={() => setOmniSafeBrowserOpen(false)}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
+      />
+
+      {/* Stripe & Gmail Payment Gateway Hub Live Sandboxed Iframe Modal */}
+      <PaymentGatewayHubModal
+        isOpen={paymentGatewayHubOpen}
+        onClose={() => setPaymentGatewayHubOpen(false)}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
+      />
+
+      {/* Universal Video & Audio Downloader Live Sandboxed Iframe Modal */}
+      <VideoAudioDownloaderModal
+        isOpen={videoAudioDownloaderOpen}
+        onClose={() => setVideoAudioDownloaderOpen(false)}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
+      />
+
+      {/* PayHub Gateway & Gmail Disbursement PWA Live Sandboxed Iframe Modal */}
+      <PayHubDisbursementModal
+        isOpen={payHubDisbursementOpen}
+        onClose={() => setPayHubDisbursementOpen(false)}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
+      />
+
+      {/* UAE & Dubai Visa AI Hub Live Sandboxed Iframe Modal */}
+      <UaeVisaHubModal
+        isOpen={uaeVisaHubOpen}
+        onClose={() => setUaeVisaHubOpen(false)}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
+      />
+
+      {/* APK Editor & Studio Live Sandboxed Iframe Modal */}
+      <ApkEditorStudioModal
+        isOpen={apkEditorStudioOpen}
+        onClose={() => setApkEditorStudioOpen(false)}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
+      />
+
+      {/* Pulse SMS Proxied Iframe Modal */}
+      <PulseSmsModal
+        isOpen={pulseSmsOpen}
+        onClose={() => setPulseSmsOpen(false)}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
+      />
+
+      {/* AI Picture Studio & Art Generator Modal */}
+      <AIPictureStudioModal
+        isOpen={pictureStudioOpen}
+        onClose={() => setPictureStudioOpen(false)}
+        initialPrompt={pictureStudioInitialPrompt}
+        onSendToChat={(prompt) => handleSendMessage(`ছবি তৈরি করো: ${prompt}`)}
+      />
+
+      {/* GitHub Business Idea, SMS, Marketing, Learning & Auto-Gmail Studio */}
+      <GitHubBusinessHubModal
+        isOpen={githubBusinessHubOpen}
+        onClose={() => setGithubBusinessHubOpen(false)}
+        initialRepo={selectedBusinessRepo}
+        onSendToChat={(prompt) => handleSendMessage(prompt)}
+        onOpenPulseSms={() => setPulseSmsOpen(true)}
+        onOpenEmailComposer={(cfg) => handleOpenEmailComposer(cfg)}
+        onOpenTemplatesLibrary={(draft) => handleOpenEmailTemplatesLibrary(draft, 'github-hub')}
+        injectedTemplate={injectedHubTemplate}
+      />
+
+      {/* Email Templates Library Modal (Marketing, Collaboration, Follow-up) */}
+      <EmailTemplatesLibraryModal
+        isOpen={emailTemplatesModalOpen}
+        onClose={() => {
+          setEmailTemplatesModalOpen(false);
+          setEmailTemplatesDraft(null);
+        }}
+        initialCreateDraft={emailTemplatesDraft}
+        onUseTemplate={(tmpl) => {
+          if (emailTemplatesReturnTarget === 'github-hub' && githubBusinessHubOpen) {
+            setInjectedHubTemplate({
+              subject: tmpl.subject,
+              body: tmpl.body,
+              language: tmpl.language,
+              recipientHint: tmpl.recipientHint,
+              appliedAt: Date.now(),
+            });
+          } else {
+            handleOpenEmailComposer({
+              recipient: tmpl.recipientHint,
+              subject: tmpl.subject,
+              body: tmpl.body,
+              language: tmpl.language,
+            });
+          }
+        }}
+      />
+
       {/* Inbound Share Toast Notification */}
       {sharedAlertToast && (
         <div className="fixed top-16 right-4 z-50 p-3 rounded-2xl bg-emerald-600 text-white shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in slide-in-from-top-3 border border-emerald-400">
@@ -1618,6 +2342,13 @@ export default function App() {
       {/* PWA Offline Indicator */}
       <OfflineIndicator />
     </div>
+
+    {/* Print-Friendly Chat Session View (Rendered outside #app-main-shell for clean multi-page A4 PDF printing) */}
+    <ChatPrintPreviewModal
+      isOpen={printPreviewOpen}
+      onClose={() => setPrintPreviewOpen(false)}
+      session={activeSession}
+    />
     </MiniBrowserProvider>
   </MusicPlayerProvider>
   );

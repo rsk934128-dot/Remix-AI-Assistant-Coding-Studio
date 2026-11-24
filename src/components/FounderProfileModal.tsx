@@ -25,7 +25,9 @@ import {
   MapPin,
   Phone,
   Mail,
-  Crown
+  Crown,
+  Briefcase,
+  Globe
 } from 'lucide-react';
 import { FOUNDER_PROFILE } from '../data/founderProfile';
 import { 
@@ -41,12 +43,14 @@ interface FounderProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAskAIAboutAdmin?: (query: string) => void;
+  onOpenPortfolioPwa?: () => void;
 }
 
 export const FounderProfileModal: React.FC<FounderProfileModalProps> = ({
   isOpen,
   onClose,
   onAskAIAboutAdmin,
+  onOpenPortfolioPwa,
 }) => {
   const [activeTab, setActiveTab] = useState<'id_card' | 'edit_id' | 'projects' | 'admin_json' | 'sql_schema'>('id_card');
   const [profileData, setProfileData] = useState<SmartProfileIdData>(getStoredProfileId);
@@ -805,6 +809,47 @@ ON CONFLICT (profile_id_code) DO UPDATE SET full_name_en = EXCLUDED.full_name_en
                 <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
                   পারিবারিক হোটেল ও মিষ্টির দোকানের দৈনন্দিন ক্যাশ রেজিস্টার, ইনভেন্টরি ও অফলাইন অর্ডার ট্র্যাকিং পিডব্লিউএ (Next.js + Dexie.js + Tailwind CSS) আর্কিটেকচার দ্বারা পরিচালিত।
                 </p>
+              </div>
+
+              {/* Sheikh Farid Portfolio PWA Banner */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-sky-500/15 via-blue-500/10 to-indigo-500/10 border border-sky-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <span className="p-2 rounded-xl bg-sky-600 text-white shadow-xs shrink-0">
+                    <Briefcase className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h4 className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                      Sheikh Farid — Portfolio PWA (#projects)
+                    </h4>
+                    <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5">
+                      ফুল-স্ট্যাক ও মোবাইল ডেভেলপার পোর্টফোলিও এবং লাইভ প্রজেক্ট শোকেস সরাসরি ইন-অ্যাপ আইফ্রেমে দেখুন।
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {onOpenPortfolioPwa && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenPortfolioPwa();
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>আইফ্রেমে খুলুন</span>
+                    </button>
+                  )}
+                  <a
+                    href="https://portfolio-pwa-azure.vercel.app/#projects"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-semibold transition-colors"
+                  >
+                    <span>ভিজিট করুন</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
               </div>
 
               {/* Projects Grid */}

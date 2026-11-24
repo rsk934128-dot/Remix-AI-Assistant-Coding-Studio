@@ -34,14 +34,31 @@ import {
   PinOff,
   BarChart3,
   Mail,
-  Cpu
+  Cpu,
+  Key,
+  Bell,
+  Tv,
+  Palette,
+  Briefcase,
+  ShieldAlert,
+  CreditCard,
+  Wallet,
+  Plane,
+  Package,
+  MessagesSquare,
+  Rocket,
+  BookMarked,
+  Printer
 } from 'lucide-react';
+import { HorizontalProgramScroller } from './HorizontalProgramScroller';
 import { AssistantMode } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
 import { AppLogo } from './AppLogo';
 import { UserAuthButton } from './UserAuthButton';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
+import { useAuth } from '../context/AuthContext';
 import { useMiniBrowser } from '../context/MiniBrowserContext';
+import { useNotifications } from '../context/NotificationContext';
 import { UniversalTab } from './UniversalAppsConnectModal';
 
 interface HeaderProps {
@@ -49,6 +66,7 @@ interface HeaderProps {
   onOpenArchitecture: () => void;
   onOpenHostingDiagnostic?: () => void;
   onOpenCitizenServices?: () => void;
+  onOpenShurukkhaHub?: () => void;
   onOpenFreelanceAgent?: () => void;
   onOpenUniversalApps?: (tab?: UniversalTab) => void;
   onOpenMetrics?: () => void;
@@ -59,9 +77,25 @@ interface HeaderProps {
   onOpenMobilePrograms?: () => void;
   onOpenShareReceiver?: () => void;
   onOpenRubelNetManager?: () => void;
+  onOpenYouTubeAuth?: () => void;
+  onOpenDeveloperApi?: () => void;
+  onOpenNotificationModal?: () => void;
+  onOpenMediaStudio?: () => void;
+  onOpenPictureStudio?: () => void;
+  onOpenPortfolioPwa?: () => void;
+  onOpenOmniSafeBrowser?: () => void;
+  onOpenPaymentGatewayHub?: () => void;
+  onOpenVideoAudioDownloader?: () => void;
+  onOpenPayHubDisbursement?: () => void;
+  onOpenUaeVisaHub?: () => void;
+  onOpenApkEditorStudio?: () => void;
+  onOpenPulseSms?: () => void;
+  onOpenGitHubBusinessHub?: () => void;
+  onOpenEmailTemplatesLibrary?: () => void;
   onNewChat: () => void;
   onClearChat: () => void;
   onExportChat: () => void;
+  onExportChatToPDF?: () => void;
   onOpenShareModal?: (config?: { title?: string; text?: string; url?: string; sessionId?: string; shareType?: 'session' | 'app' | 'message' }) => void;
   onSyncAll?: () => Promise<void>;
   mode: AssistantMode;
@@ -81,6 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenArchitecture,
   onOpenHostingDiagnostic,
   onOpenCitizenServices,
+  onOpenShurukkhaHub,
   onOpenFreelanceAgent,
   onOpenUniversalApps,
   onOpenMetrics,
@@ -91,9 +126,25 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMobilePrograms,
   onOpenShareReceiver,
   onOpenRubelNetManager,
+  onOpenYouTubeAuth,
+  onOpenDeveloperApi,
+  onOpenNotificationModal,
+  onOpenMediaStudio,
+  onOpenPictureStudio,
+  onOpenPortfolioPwa,
+  onOpenOmniSafeBrowser,
+  onOpenPaymentGatewayHub,
+  onOpenVideoAudioDownloader,
+  onOpenPayHubDisbursement,
+  onOpenUaeVisaHub,
+  onOpenApkEditorStudio,
+  onOpenPulseSms,
+  onOpenGitHubBusinessHub,
+  onOpenEmailTemplatesLibrary,
   onNewChat,
   onClearChat,
   onExportChat,
+  onExportChatToPDF,
   onOpenShareModal,
   onSyncAll,
   mode,
@@ -109,6 +160,8 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const musicPlayer = useMusicPlayer();
   const miniBrowser = useMiniBrowser();
+  const { isYouTubeConnected, youtubeUser } = useAuth();
+  const { unreadCount } = useNotifications();
   const [isShareDropdownOpen, setIsShareDropdownOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -238,8 +291,9 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       id="app-header"
-      className="h-14 border-b border-stone-200 dark:border-stone-800 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md px-4 flex items-center justify-between z-10 shrink-0"
+      className="border-b border-stone-200 dark:border-stone-800 bg-white/85 dark:bg-stone-900/85 backdrop-blur-md z-10 shrink-0 flex flex-col"
     >
+      <div className="h-13 sm:h-14 px-3 sm:px-4 flex items-center justify-between gap-2">
       <div className="flex items-center gap-2.5">
         <button
           id="toggle-sidebar-btn"
@@ -316,207 +370,16 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Header Actions */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        {/* Universal Inbound Share Hub (Receive Files, Photos, Links, Notes) */}
-        {onOpenShareReceiver && (
-          <button
-            id="header-open-share-receiver-btn"
-            type="button"
-            onClick={onOpenShareReceiver}
-            className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 transition-all shadow-2xs active:scale-95 cursor-pointer"
-            title="বহিরাগত প্ল্যাটফর্ম থেকে ফাইল, ছবি, লিংক ও লেখা আনুন (Universal Share Hub)"
-          >
-            <Share2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="hidden sm:inline">শেয়ার হাব</span>
-          </button>
-        )}
-
-        {/* RubelNet Firebase Manager Sovereign Grid Button */}
-        {onOpenRubelNetManager && (
-          <button
-            id="header-open-rubelnet-btn"
-            type="button"
-            onClick={onOpenRubelNetManager}
-            className="hidden xl:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-950/70 to-stone-900/90 hover:from-emerald-900/80 text-emerald-300 border border-emerald-500/40 shadow-xs cursor-pointer transition-all"
-            title="RubelNet Firebase Manager 🛡️ — The Sovereign Grid for Firebase Command Center"
-          >
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
-            <span>RubelNet 🛡️</span>
-          </button>
-        )}
-
-        {/* YouTube Auto-Continuous Music Button */}
-        <button
-          id="header-open-music-player-btn"
-          type="button"
-          onClick={() => {
-            if (musicPlayer.currentTrack) {
-              musicPlayer.expandPlayer();
-            } else {
-              musicPlayer.playTrack({
-                videoId: 'jfKfPfyJRdk',
-                title: 'Lofi Girl - Chill Beats to Code & Study',
-                originalUrl: 'https://www.youtube.com/watch?v=jfKfPfyJRdk',
-              });
-            }
-          }}
-          className="hidden lg:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 dark:from-red-950/60 dark:to-rose-950/60 dark:hover:from-red-900/60 dark:hover:to-rose-900/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 transition-all shadow-2xs cursor-pointer"
-          title="ইউটিউব অটো-কন্টিনিউয়াস গান (একের পর এক গান, সময় অনুযায়ী আপডেট ও পূর্বে শোনা গান)"
-        >
-          <Music className={`w-3.5 h-3.5 text-red-500 ${musicPlayer.isStreaming ? 'animate-bounce' : ''}`} />
-          <span>মিউজিক 🎵</span>
-        </button>
-
-        {/* Mobile Programs Launcher Button */}
-        {onOpenMobilePrograms && (
-          <button
-            id="mobile-header-programs-btn"
-            type="button"
-            onClick={onOpenMobilePrograms}
-            className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 transition-all shadow-2xs active:scale-95 cursor-pointer"
-            title="সকল প্রোগ্রাম ও টুলকিট খুলুন (Mobile Programs Hub)"
-          >
-            <Cpu className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>প্রোগ্রাম</span>
-          </button>
-        )}
-
-        {onOpenUniversalApps && (
-          <button
-            id="open-universal-apps-btn"
-            onClick={() => onOpenUniversalApps('apps')}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 dark:from-blue-950/60 dark:to-indigo-950/60 dark:hover:from-blue-900/60 dark:hover:to-indigo-900/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors shadow-xs cursor-pointer"
-            title="সকল অ্যাপস ওপেন, জিমেইল, মেসেজিং ও GitHub কানেক্টর হাব"
-          >
-            <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span>সকল অ্যাপস ও কানেক্ট</span>
-          </button>
-        )}
-
-        {onOpenMetrics && (
-          <button
-            id="open-metrics-btn"
-            onClick={onOpenMetrics}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-colors shadow-xs cursor-pointer"
-            title="Recharts চালিত চ্যাট ও প্রজেক্ট মেট্রিক্স অ্যানালিটিক্স ড্যাশবোর্ড"
-          >
-            <BarChart3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>মেট্রিক্স ও গ্রাফ</span>
-          </button>
-        )}
-
-        {onOpenFreelanceAgent && (
-          <button
-            id="open-freelance-agent-btn"
-            onClick={onOpenFreelanceAgent}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-xs"
-            title="২৪/৭ রিমোট জব ও ফ্রিল্যান্স এআই এজেন্ট স্টুডিও"
-          >
-            <Bot className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>রিমোট জব এজেন্ট</span>
-          </button>
-        )}
-
-        {onOpenCitizenServices && (
-          <button
-            id="open-citizen-services-btn"
-            onClick={onOpenCitizenServices}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800 transition-colors shadow-xs"
-            title="মোবাইল নম্বর ডিরেক্টরি, ঠিকানা ও এ টু জেড জনসেবা কেন্দ্র"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-            <span className="hidden sm:inline">জনসেবা ও A-Z টুলকিট</span>
-          </button>
-        )}
-
-        <button
-          id="open-architecture-guide-btn"
-          onClick={onOpenArchitecture}
-          className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition-colors shadow-xs"
-          title="নিজস্ব AI অ্যাপ কীভাবে বানাবেন তার বিস্তারিত রোডম্যাপ"
-        >
-          <Layers className="w-3.5 h-3.5 text-amber-500" />
-          <span>AI আর্কিটেকচার ম্যাপ</span>
-        </button>
-
-        {onOpenHostingDiagnostic && (
-          <button
-            id="open-hosting-diagnostic-btn"
-            onClick={onOpenHostingDiagnostic}
-            className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-xs"
-            title="হোস্টিং ও জেমিনি এআই ডায়াগনস্টিক"
-          >
-            <Server className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>এআই স্ট্যাটাস</span>
-          </button>
-        )}
-
-        {onOpenTTSSettings && (
-          <button
-            id="open-tts-settings-header-btn"
-            onClick={onOpenTTSSettings}
-            className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-750 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition-colors shadow-xs cursor-pointer"
-            title="সহকারীর পড়ার গতি ও কণ্ঠ সেটিংস (TTS Speed & Voice Settings)"
-          >
-            <Volume2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>স্পিচ গতি</span>
-          </button>
-        )}
-
-        {onOpenFounderProfile && (
-          <button
-            id="open-founder-profile-header-btn"
-            onClick={onOpenFounderProfile}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 dark:from-amber-950/70 dark:to-amber-900/60 dark:hover:from-amber-900/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
-            title="স্মার্ট ডিজিটাল প্রোফাইল আইডি কার্ড দেখুন ও তৈরি/আপডেট করুন (Sheikh Farid - Super Admin)"
-          >
-            <Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-            <span className="hidden sm:inline">প্রোফাইল আইডি</span>
-            <span className="sm:hidden">আইডি</span>
-          </button>
-        )}
-
-        {onOpenEmailComposer && (
-          <button
-            id="open-email-composer-header-btn"
-            onClick={onOpenEmailComposer}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/50 dark:hover:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-800 transition-colors shadow-xs cursor-pointer"
-            title="প্রফেশনাল ইমেইল কম্পোজার ও ড্রাফটার (Email Composer & Exporter)"
-          >
-            <Mail className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-            <span className="hidden lg:inline">ইমেইল ড্রাফটার</span>
-            <span className="lg:hidden">ইমেইল</span>
-          </button>
-        )}
-
+      {/* Right: Persistent Quick Utilities (never clipped) */}
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
         <button
           id="header-new-chat-btn"
           onClick={onNewChat}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs active:scale-95"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-xs active:scale-95 cursor-pointer"
           title="নতুন চ্যাট শুরু করুন"
         >
           <Plus className="w-3.5 h-3.5" />
           <span className="hidden md:inline">নতুন চ্যাট</span>
-        </button>
-
-        {/* In-App Mini Google Web Browser Launcher */}
-        <button
-          id="header-mini-google-browser-btn"
-          type="button"
-          onClick={() => {
-            const query = activeSessionTitle && activeSessionTitle !== 'নতুন কথোপকথন'
-              ? activeSessionTitle
-              : '';
-            miniBrowser.openBrowser(query, 'search', {
-              sessionTitle: activeSessionTitle,
-            });
-          }}
-          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 bg-blue-50/90 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 border border-blue-300 dark:border-blue-800 transition-colors shadow-xs cursor-pointer"
-          title="মিনি গুগল ব্রাউজার খুলুন (লাইভ ওয়েব সার্চ, ইউটিউব, গুগল রিসোর্স)"
-        >
-          <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-          <span>মিনি ব্রাউজার</span>
         </button>
 
         {/* PWA Install Button */}
@@ -766,6 +629,32 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
+        {/* Dedicated Export Chat to PDF (Print-Friendly View) Button */}
+        {onExportChatToPDF && (
+          <button
+            id="header-export-chat-pdf-btn"
+            data-testid="header-export-chat-pdf-btn"
+            type="button"
+            onClick={onExportChatToPDF}
+            disabled={!hasMessages}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border shadow-xs shrink-0 ${
+              hasMessages
+                ? 'bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/70 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 cursor-pointer active:scale-95'
+                : 'bg-stone-100 dark:bg-stone-800/60 text-stone-400 dark:text-stone-600 border-stone-200/80 dark:border-stone-800 cursor-not-allowed opacity-60'
+            }`}
+            title={
+              hasMessages
+                ? 'Export Chat to PDF (প্রিন্ট-ফ্রেন্ডলি ভিউ ও PDF সেভ)'
+                : 'PDF এক্সপোর্ট করতে আগে চ্যাটে কথোপকথন শুরু করুন'
+            }
+            aria-label="Export Chat to PDF"
+          >
+            <Printer className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden xl:inline">Export Chat to PDF</span>
+            <span className="hidden sm:inline xl:hidden">Export PDF</span>
+          </button>
+        )}
+
         {hasMessages && (
           <button
             id="clear-chat-btn"
@@ -811,17 +700,468 @@ export const Header: React.FC<HeaderProps> = ({
           <span>মিউজিক প্লেয়ার</span>
         </button>
 
+        {/* Universal Video & Image Media Studio Button */}
+        {onOpenMediaStudio && (
+          <button
+            id="header-universal-media-btn"
+            onClick={onOpenMediaStudio}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 border border-cyan-500/25 transition-all text-xs font-semibold cursor-pointer shrink-0"
+            title="যেকোনো ভিডিও প্লেব্যাক ও যেকোনো ইমেজ জুম/ডাউনলোড স্টুডিও"
+          >
+            <Tv className="w-3.5 h-3.5 text-cyan-500" />
+            <span>মিডিয়া স্টুডিও</span>
+          </button>
+        )}
+
+        {/* AI Picture Studio & Art Generator Button */}
+        {onOpenPictureStudio && (
+          <button
+            id="header-picture-studio-btn"
+            onClick={onOpenPictureStudio}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/25 transition-all text-xs font-semibold cursor-pointer shrink-0"
+            title="AI ছবি তৈরি করুন ও সরাসরি ডাউনলোড করুন"
+          >
+            <Palette className="w-3.5 h-3.5 text-purple-500" />
+            <span>AI ছবি স্টুডিও</span>
+          </button>
+        )}
+
+        {/* Real-time Push & In-App Notification Center Bell */}
+        {onOpenNotificationModal && (
+          <button
+            id="header-notification-center-btn"
+            type="button"
+            onClick={onOpenNotificationModal}
+            className="relative p-2 rounded-xl text-stone-600 dark:text-stone-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer border border-transparent hover:border-stone-200 dark:hover:border-stone-700"
+            title={`নোটিফিকেশন সেন্টার ${unreadCount > 0 ? `(${unreadCount}টি নতুন নোটিফিকেশন)` : ''}`}
+          >
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-rose-500 text-white font-bold text-[9px] flex items-center justify-center animate-pulse shadow-md">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+        )}
+
         {/* Cloud Sync & Firebase User Auth */}
         <UserAuthButton onSyncAll={onSyncAll} onOpenProfile={onOpenFounderProfile} compact={true} />
+
+        {onOpenTTSSettings && (
+          <button
+            id="header-quick-tts-settings-btn"
+            type="button"
+            onClick={onOpenTTSSettings}
+            className="p-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
+            title="Text-to-Speech (TTS) ভয়েস গতি ও ভাষা সেটিংস প্যানেল"
+            aria-label="Text-to-Speech সেটিংস প্যানেল"
+          >
+            <Volume2 className="w-4 h-4" />
+          </button>
+        )}
 
         <button
           id="toggle-dark-mode-btn"
           onClick={() => setDarkMode((d: boolean) => !d)}
-          className="p-2 rounded-lg text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+          className="p-2 rounded-lg text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
           title={darkMode ? 'লাইট মোড' : 'ডার্ক মোড'}
         >
           {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
+      </div>
+      </div>
+
+      {/* Horizontal Scrollable Top Programs Bar (Swipe / Scroll Left & Right) */}
+      <div className="border-t border-stone-200/70 dark:border-stone-800/70 bg-stone-50/90 dark:bg-stone-950/75 px-2 sm:px-3 py-1">
+        <HorizontalProgramScroller variant="header">
+          {onOpenUniversalApps && (
+            <button
+              id="open-universal-apps-btn"
+              onClick={() => onOpenUniversalApps('apps')}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 dark:from-blue-950/60 dark:to-indigo-950/60 dark:hover:from-blue-900/60 dark:hover:to-indigo-900/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+              title="সকল অ্যাপস ওপেন, জিমেইল, মেসেজিং ও GitHub কানেক্টর হাব"
+            >
+              <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>সকল অ্যাপস ও কানেক্ট</span>
+            </button>
+          )}
+
+          {onOpenGitHubBusinessHub && (
+            <button
+              id="header-github-business-btn"
+              type="button"
+              onClick={onOpenGitHubBusinessHub}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:brightness-110 text-white shadow-xs transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+              title="GitHub বিজনেস আইডিয়া, SMS ক্যাম্পেইন, অটো-Gmail প্রেরণ ও বিজনেস লার্নিং"
+            >
+              <Rocket className="w-3.5 h-3.5 text-emerald-100" />
+              <span>GitHub বিজনেস ও অটো-Gmail</span>
+            </button>
+          )}
+
+          {onOpenMobilePrograms && (
+            <button
+              id="mobile-header-programs-btn"
+              type="button"
+              onClick={onOpenMobilePrograms}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
+              title="সকল প্রোগ্রাম ও টুলকিট খুলুন (Programs Hub)"
+            >
+              <Cpu className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>প্রোগ্রাম হাব</span>
+            </button>
+          )}
+
+          {onOpenDeveloperApi && (
+            <button
+              id="header-open-developer-api-btn"
+              type="button"
+              onClick={onOpenDeveloperApi}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:brightness-110 text-white shadow-xs transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+              title="থার্ড-পার্টি ডেভেলপারদের জন্য API সার্ভিস, Key জেনারেটর ও রেট লিমিট ড্যাশবোর্ড"
+            >
+              <Key className="w-3.5 h-3.5 text-blue-200" />
+              <span>API সার্ভিস (SaaS)</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-white/20 text-white uppercase font-black">
+                PRO
+              </span>
+            </button>
+          )}
+
+          {onOpenShurukkhaHub && (
+            <button
+              id="open-shurukkha-hub-header-btn"
+              onClick={onOpenShurukkhaHub}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 hover:from-emerald-500 hover:to-teal-500 text-white shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              title="সুরক্ষা হাব ড্যাশবোর্ড (Shurukkha Hub — লাইভ সুরক্ষিত আইফ্রেম)"
+            >
+              <Shield className="w-3.5 h-3.5 text-emerald-200 animate-pulse" />
+              <span>সুরক্ষা হাব</span>
+            </button>
+          )}
+
+          {onOpenPortfolioPwa && (
+            <button
+              id="header-portfolio-pwa-btn"
+              type="button"
+              onClick={onOpenPortfolioPwa}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-sky-600 to-indigo-600 hover:brightness-110 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              title="Sheikh Farid — Portfolio PWA (#projects)"
+            >
+              <Briefcase className="w-3.5 h-3.5 text-sky-200" />
+              <span>Portfolio PWA</span>
+            </button>
+          )}
+
+          {onOpenOmniSafeBrowser && (
+            <button
+              id="header-omnisafe-browser-btn"
+              type="button"
+              onClick={onOpenOmniSafeBrowser}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              title="OnionShield — OmniSafe Privacy Browser"
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-violet-200" />
+              <span>OnionShield ব্রাউজার</span>
+            </button>
+          )}
+
+          {onOpenPaymentGatewayHub && (
+            <button
+              id="header-payment-gateway-hub-btn"
+              type="button"
+              onClick={onOpenPaymentGatewayHub}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-indigo-600 to-emerald-600 hover:brightness-110 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              title="Stripe & Gmail Payment Gateway Hub"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-indigo-200" />
+              <span>Stripe &amp; Gmail হাব</span>
+            </button>
+          )}
+
+          {onOpenVideoAudioDownloader && (
+            <button
+              id="header-video-audio-downloader-btn"
+              type="button"
+              onClick={onOpenVideoAudioDownloader}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-rose-600 to-orange-600 hover:brightness-110 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              title="Universal Video & Audio Downloader"
+            >
+              <Download className="w-3.5 h-3.5 text-rose-100" />
+              <span>Video/Audio ডাউনলোডার</span>
+            </button>
+          )}
+
+          {onOpenPayHubDisbursement && (
+            <button
+              id="header-payhub-disbursement-btn"
+              type="button"
+              onClick={onOpenPayHubDisbursement}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-teal-600 to-cyan-600 hover:brightness-110 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              title="PayHub Gateway & Gmail Disbursement PWA"
+            >
+              <Wallet className="w-3.5 h-3.5 text-teal-100" />
+              <span>PayHub ডিসবার্সমেন্ট</span>
+            </button>
+          )}
+
+          {onOpenUaeVisaHub && (
+            <button
+              id="header-uae-visa-hub-btn"
+              type="button"
+              onClick={onOpenUaeVisaHub}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-amber-500 via-sky-600 to-blue-700 hover:brightness-110 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              title="UAE & Dubai Visa AI Hub"
+            >
+              <Plane className="w-3.5 h-3.5 text-amber-100" />
+              <span>UAE Visa AI</span>
+            </button>
+          )}
+
+          {onOpenApkEditorStudio && (
+            <button
+              id="header-apk-editor-studio-btn"
+              type="button"
+              onClick={onOpenApkEditorStudio}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-lime-500 via-emerald-600 to-cyan-600 hover:brightness-110 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              title="APK Editor & Studio"
+            >
+              <Package className="w-3.5 h-3.5 text-lime-100" />
+              <span>APK Editor Studio</span>
+            </button>
+          )}
+
+          {onOpenPulseSms && (
+            <button
+              id="header-pulse-sms-btn"
+              type="button"
+              onClick={onOpenPulseSms}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600 hover:brightness-110 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+              title="Pulse SMS — ওয়েব ও এআই মেসেজিং"
+            >
+              <MessagesSquare className="w-3.5 h-3.5 text-blue-100" />
+              <span>Pulse SMS ওয়েব</span>
+            </button>
+          )}
+
+          {onOpenShareReceiver && (
+            <button
+              id="header-open-share-receiver-btn"
+              type="button"
+              onClick={onOpenShareReceiver}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
+              title="বহিরাগত প্ল্যাটফর্ম থেকে ফাইল, ছবি, লিংক ও লেখা আনুন (Universal Share Hub)"
+            >
+              <Share2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>শেয়ার হাব</span>
+            </button>
+          )}
+
+          {onOpenRubelNetManager && (
+            <button
+              id="header-open-rubelnet-btn"
+              type="button"
+              onClick={onOpenRubelNetManager}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-emerald-950/80 to-stone-900/90 hover:from-emerald-900/90 text-emerald-300 border border-emerald-500/40 shadow-2xs cursor-pointer transition-all whitespace-nowrap"
+              title="RubelNet Firebase Manager 🛡️ — The Sovereign Grid for Firebase Command Center"
+            >
+              <Shield className="w-3.5 h-3.5 text-emerald-400" />
+              <span>RubelNet 🛡️</span>
+            </button>
+          )}
+
+          <button
+            id="header-open-music-player-btn"
+            type="button"
+            onClick={() => {
+              if (musicPlayer.currentTrack) {
+                musicPlayer.expandPlayer();
+              } else {
+                musicPlayer.playTrack({
+                  videoId: 'maGEkZUFlKU',
+                  title: 'Top 10 Rabindra Sangeet রবীন্দ্র সংগীত | রবিঠাকুরের সেরা গান',
+                  originalUrl: 'https://www.youtube.com/watch?v=maGEkZUFlKU',
+                });
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 dark:from-red-950/60 dark:to-rose-950/60 dark:hover:from-red-900/60 dark:hover:to-rose-900/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 transition-all shadow-2xs cursor-pointer whitespace-nowrap"
+            title={isYouTubeConnected ? `${youtubeUser?.title || 'YouTube Channel'} (কানেক্টেড - প্লেয়ার খুলুন)` : 'ইউটিউব অটো-কন্টিনিউয়াস গান'}
+          >
+            {isYouTubeConnected && youtubeUser?.thumbnail ? (
+              <img
+                src={youtubeUser.thumbnail}
+                alt="YouTube"
+                className="w-4 h-4 rounded-full object-cover border border-red-500 shrink-0"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <Youtube className="w-3.5 h-3.5 text-red-500 shrink-0" />
+            )}
+            <span>{isYouTubeConnected && youtubeUser?.title ? youtubeUser.title.split(' ')[0] : 'মিউজিক 🎵'}</span>
+            {isYouTubeConnected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+          </button>
+
+          {onOpenMetrics && (
+            <button
+              id="open-metrics-btn"
+              onClick={onOpenMetrics}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+              title="Recharts চালিত চ্যাট ও প্রজেক্ট মেট্রিক্স অ্যানালিটিক্স ড্যাশবোর্ড"
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>মেট্রিক্স ও গ্রাফ</span>
+            </button>
+          )}
+
+          {onOpenFreelanceAgent && (
+            <button
+              id="open-freelance-agent-btn"
+              onClick={onOpenFreelanceAgent}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+              title="২৪/৭ রিমোট জব ও ফ্রিল্যান্স এআই এজেন্ট স্টুডিও"
+            >
+              <Bot className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>রিমোট জব এজেন্ট</span>
+            </button>
+          )}
+
+          {onOpenCitizenServices && (
+            <button
+              id="open-citizen-services-btn"
+              onClick={onOpenCitizenServices}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+              title="মোবাইল নম্বর ডিরেক্টরি, ঠিকানা ও এ টু জেড জনসেবা কেন্দ্র"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <span>জনসেবা ও A-Z টুলকিট</span>
+            </button>
+          )}
+
+          {onOpenGoogleDrive && (
+            <button
+              id="google-drive-header-btn"
+              onClick={onOpenGoogleDrive}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/25 transition-all text-xs font-semibold cursor-pointer whitespace-nowrap"
+              title="Google Drive ক্লাউড ফাইল ম্যানেজার ও স্টোরেজ"
+            >
+              <HardDrive className="w-3.5 h-3.5 text-amber-500" />
+              <span>Google Drive</span>
+            </button>
+          )}
+
+          {onOpenMediaStudio && (
+            <button
+              id="header-universal-media-btn"
+              onClick={onOpenMediaStudio}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 border border-cyan-500/25 transition-all text-xs font-semibold cursor-pointer whitespace-nowrap"
+              title="যেকোনো ভিডিও প্লেব্যাক ও যেকোনো ইমেজ জুম/ডাউনলোড স্টুডিও"
+            >
+              <Tv className="w-3.5 h-3.5 text-cyan-500" />
+              <span>মিডিয়া স্টুডিও</span>
+            </button>
+          )}
+
+          {onOpenPictureStudio && (
+            <button
+              id="header-picture-studio-btn"
+              onClick={onOpenPictureStudio}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/25 transition-all text-xs font-semibold cursor-pointer whitespace-nowrap"
+              title="AI ছবি তৈরি করুন ও সরাসরি ডাউনলোড করুন"
+            >
+              <Palette className="w-3.5 h-3.5 text-purple-500" />
+              <span>AI ছবি স্টুডিও</span>
+            </button>
+          )}
+
+          {onOpenEmailComposer && (
+            <button
+              id="open-email-composer-header-btn"
+              onClick={onOpenEmailComposer}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/50 dark:hover:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-800 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+              title="প্রফেশনাল ইমেইল কম্পোজার ও ড্রাফটার (Email Composer & Exporter)"
+            >
+              <Mail className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <span>ইমেইল ড্রাফটার</span>
+            </button>
+          )}
+
+          {onOpenEmailTemplatesLibrary && (
+            <button
+              id="header-email-templates-btn"
+              type="button"
+              onClick={onOpenEmailTemplatesLibrary}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+              title="ইমেইল টেমপ্লেট লাইব্রেরি (Marketing, Collaboration, Follow-up)"
+            >
+              <BookMarked className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>টেমপ্লেট লাইব্রেরি</span>
+            </button>
+          )}
+
+          <button
+            id="header-mini-google-browser-btn"
+            type="button"
+            onClick={() => {
+              const query = activeSessionTitle && activeSessionTitle !== 'নতুন কথোপকথন'
+                ? activeSessionTitle
+                : '';
+              miniBrowser.openBrowser(query, 'search', {
+                sessionTitle: activeSessionTitle,
+              });
+            }}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 bg-blue-50/90 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 border border-blue-300 dark:border-blue-800 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+            title="মিনি গুগল ব্রাউজার খুলুন (লাইভ ওয়েব সার্চ, ইউটিউব, গুগল রিসোর্স)"
+          >
+            <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span>মিনি ব্রাউজার</span>
+          </button>
+
+          {onOpenFounderProfile && (
+            <button
+              id="open-founder-profile-header-btn"
+              onClick={onOpenFounderProfile}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 dark:from-amber-950/70 dark:to-amber-900/60 dark:hover:from-amber-900/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap"
+              title="স্মার্ট ডিজিটাল প্রোফাইল আইডি কার্ড দেখুন ও তৈরি/আপডেট করুন (Sheikh Farid - Super Admin)"
+            >
+              <Crown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>প্রোফাইল আইডি</span>
+            </button>
+          )}
+
+          <button
+            id="open-architecture-guide-btn"
+            onClick={onOpenArchitecture}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+            title="নিজস্ব AI অ্যাপ কীভাবে বানাবেন তার বিস্তারিত রোডম্যাপ"
+          >
+            <Layers className="w-3.5 h-3.5 text-amber-500" />
+            <span>AI আর্কিটেকচার</span>
+          </button>
+
+          {onOpenHostingDiagnostic && (
+            <button
+              id="open-hosting-diagnostic-btn"
+              onClick={onOpenHostingDiagnostic}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+              title="হোস্টিং ও জেমিনি এআই ডায়াগনস্টিক"
+            >
+              <Server className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>এআই স্ট্যাটাস</span>
+            </button>
+          )}
+
+          {onOpenTTSSettings && (
+            <button
+              id="open-tts-settings-header-btn"
+              onClick={onOpenTTSSettings}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+              title="Text-to-Speech (TTS) কণ্ঠস্বরের গতি ও ভাষা সেটিংস প্যানেল"
+            >
+              <Volume2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>TTS সেটিংস</span>
+            </button>
+          )}
+        </HorizontalProgramScroller>
       </div>
     </header>
   );

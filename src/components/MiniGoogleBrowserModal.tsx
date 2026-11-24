@@ -48,6 +48,7 @@ import { useMiniBrowser } from '../context/MiniBrowserContext';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
 import { ContinuousTTSPlayer } from '../utils/textToSpeech';
 import { ChatSession } from '../types';
+import { authenticatedFetch } from '../utils/apiAuth';
 
 export interface MiniGoogleBrowserModalProps {
   activeSession?: ChatSession;
@@ -460,7 +461,7 @@ export const MiniGoogleBrowserModal: React.FC<MiniGoogleBrowserModalProps> = ({
         setInputUrlOrQuery(searchQuery);
         handleSearch(searchQuery, true);
         handleSearchYouTube(searchQuery);
-      } else if (activeUrl && activeUrl !== 'https://www.google.com' && activeUrl !== lastHandledUrlRef.current) {
+      } else if (activeUrl && !activeUrl.includes('google.com') && activeUrl !== lastHandledUrlRef.current) {
         lastHandledUrlRef.current = activeUrl;
         setInputUrlOrQuery(activeUrl);
         const entry: HistoryEntry = {
@@ -554,7 +555,7 @@ export const MiniGoogleBrowserModal: React.FC<MiniGoogleBrowserModalProps> = ({
     setIsLoading(true);
     setActiveTab('search');
     try {
-      const res = await fetch('/api/mini-browser/search', {
+      const res = await authenticatedFetch('/api/mini-browser/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q }),
@@ -689,7 +690,7 @@ export const MiniGoogleBrowserModal: React.FC<MiniGoogleBrowserModalProps> = ({
 
   // Home Button
   const handleGoHome = () => {
-    setInputUrlOrQuery('https://www.google.com');
+    setInputUrlOrQuery('');
     setActiveTab('search');
     handleSearch('Google Search', true);
   };
@@ -746,12 +747,13 @@ export const MiniGoogleBrowserModal: React.FC<MiniGoogleBrowserModalProps> = ({
       return;
     }
 
-    // If it's a google domain, switch to search tab
-    if (/^https?:\/\/(?:www\.)?google\.[a-z.]+(?:\/)?$/i.test(val)) {
+    // If it's a google domain (with or without https/www), switch to native search tab to prevent 'refused to connect'
+    if (/^(?:https?:\/\/)?(?:www\.)?google\.[a-z.]+(?:\/)?$/i.test(val)) {
       setActiveTab('search');
+      setInputUrlOrQuery('');
       return;
     }
-    const googleQueryMatch = val.match(/^https?:\/\/(?:www\.)?google\.[a-z.]+\/search\?.*q=([^&]+)/i);
+    const googleQueryMatch = val.match(/^(?:https?:\/\/)?(?:www\.)?google\.[a-z.]+\/search\?.*q=([^&]+)/i);
     if (googleQueryMatch) {
       const q = decodeURIComponent(googleQueryMatch[1].replace(/\+/g, ' '));
       setInputUrlOrQuery(q);
@@ -852,9 +854,11 @@ export const MiniGoogleBrowserModal: React.FC<MiniGoogleBrowserModalProps> = ({
                 type="button"
                 onClick={() => {
                   setActiveTab('web');
+                  const targetWebUrl = (activeUrl && !activeUrl.includes('google.com')) ? activeUrl : 'https://en.wikipedia.org/wiki/Main_Page';
+                  setActiveUrl(targetWebUrl);
                   pushHistory({
                     tab: 'web',
-                    urlOrQuery: activeUrl || 'https://www.google.com',
+                    urlOrQuery: targetWebUrl,
                   });
                 }}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-all shrink-0 cursor-pointer ${
@@ -1885,14 +1889,50 @@ export const MiniGoogleBrowserModal: React.FC<MiniGoogleBrowserModalProps> = ({
               {/* Mode 1: Live Web View through Server Proxy (Bypasses X-Frame-Options) */}
               {webViewMode === 'proxy' && (
                 <div className="space-y-2 flex-1 flex flex-col">
-                  <div className="h-[460px] sm:h-[520px] w-full rounded-2xl overflow-hidden border border-stone-800 bg-stone-950 relative shadow-inner">
-                    <iframe
-                      key={`web-proxy-${activeUrl}-${refreshKey}`}
-                      src={`/api/proxy?url=${encodeURIComponent(activeUrl)}`}
-                      title="Web Proxy Viewer"
-                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                      className="w-full h-full border-0 bg-white"
-                    />
+                  <div className="h-[460px] sm:h-[520px] w-full rounded-2xl overflow-hidden border border-stone-800 bg-stone-950 relative shadow-inner flex items-center justify-center p-4">
+                    {activeUrl && activeUrl.includes('google.com') ? (
+                      <div className="max-w-md w-full p-6 rounded-2xl bg-stone-900 border border-stone-800 text-center space-y-4 shadow-xl">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 mx-auto flex items-center justify-center">
+                          <Search className="w-6 h-6" />
+                        </div>
+                        <div className="space-y-1">
+                          <h3 className="text-sm font-bold text-white">গুগল হোমপেজ আইফ্রেমে লোড নিষিদ্ধ</h3>
+                          <p className="text-xs text-stone-300 leading-relaxed">
+                            গুগল তাদের সিকিউরিটি পলিসি (X-Frame-Options: SAMEORIGIN) অনুযায়ী google.com সরাসরি কোনো অ্যাপের ভেতর আইফ্রেমে লোড করা ব্লক করে।
+                          </p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveTab('search');
+                              setInputUrlOrQuery('');
+                            }}
+                            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                          >
+                            <Search className="w-3.5 h-3.5" />
+                            <span>গুগল সার্চ ট্যাবে যান</span>
+                          </button>
+                          <a
+                            href={activeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-semibold text-xs transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer border border-stone-700"
+                          >
+                            <span>নতুন ট্যাবে খুলুন</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <iframe
+                        key={`web-proxy-${activeUrl}-${refreshKey}`}
+                        src={`/api/proxy?url=${encodeURIComponent(activeUrl)}`}
+                        title="Web Proxy Viewer"
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                        className="w-full h-full border-0 bg-white"
+                      />
+                    )}
                   </div>
 
                   {/* Informational Proxy Notice */}

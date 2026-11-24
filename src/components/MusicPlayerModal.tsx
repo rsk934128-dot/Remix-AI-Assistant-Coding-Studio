@@ -35,9 +35,14 @@ import {
   Lightbulb,
   Headphones,
   Moon,
-  Coffee
+  Coffee,
+  LogIn,
+  LogOut,
+  User,
+  ShieldCheck
 } from 'lucide-react';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
+import { useAuth } from '../context/AuthContext';
 import { extractYouTubeVideoId } from '../utils/youtube';
 import {
   getTimeOfDayPeriod,
@@ -97,7 +102,23 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
     expandPlayer,
   } = useMusicPlayer();
 
-  const [activeTab, setActiveTab] = useState<'feed' | 'search' | 'queue' | 'history' | 'favorites'>('feed');
+  const {
+    isYouTubeConnected,
+    youtubeUser,
+    youtubePlaylists,
+    isFetchingPlaylists,
+    signInWithYouTube,
+    fetchYouTubePlaylists,
+    fetchPlaylistTracks,
+    disconnectYouTube,
+    isPopupBlocked,
+    clearPopupBlocked,
+    connectPublicChannel,
+    authError,
+    clearAuthError,
+  } = useAuth();
+
+  const [activeTab, setActiveTab] = useState<'feed' | 'search' | 'queue' | 'history' | 'favorites' | 'playlists'>('feed');
   const [selectedFeedCategory, setSelectedFeedCategory] = useState<string>('auto');
   const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -106,8 +127,13 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
   const [inputLinkOrId, setInputLinkOrId] = useState('');
   const [searchResults, setSearchResults] = useState<Array<{ videoId: string; title: string; author: string; url: string; thumbnail: string; duration?: string }>>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [lastSearchedTerm, setLastSearchedTerm] = useState('');
   const [isRefreshingFeed, setIsRefreshingFeed] = useState(false);
   const [liveFeedVideos, setLiveFeedVideos] = useState<MusicTrack[]>([]);
+  const [loadingPlaylistId, setLoadingPlaylistId] = useState<string | null>(null);
+  const [isConnectingYouTube, setIsConnectingYouTube] = useState(false);
+  const [publicChannelQuery, setPublicChannelQuery] = useState('');
+  const [isConnectingPublic, setIsConnectingPublic] = useState(false);
 
   // AI Music Idea Generator state
   const [customMoodInput, setCustomMoodInput] = useState('');
@@ -122,6 +148,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
   }>>([]);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Time of day calculation
@@ -200,6 +227,9 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
     const val = searchTerm.trim();
     if (!val) return;
 
+    setLastSearchedTerm(val);
+    setActiveTab('search');
+
     const detectedId = extractYouTubeVideoId(val);
     if (detectedId) {
       playVideoId(detectedId, 'ইউটিউব মিউজিক স্ট্রিম', { autoPlay: true });
@@ -235,6 +265,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
     e.preventDefault();
     if (inputLinkOrId.trim()) {
       handlePerformSearch(inputLinkOrId);
+      setActiveTab('search');
     }
   };
 
@@ -274,10 +305,60 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
 
   // When player opens or a new video track is played, automatically scroll smoothly to the video player at the top
   useEffect(() => {
-    if (isOpen && !isMinimized && containerRef.current) {
-      containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    if (isOpen && !isMinimized) {
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      if (videoContainerRef.current) {
+        videoContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
   }, [isOpen, isMinimized, currentTrack?.videoId]);
+
+  const handleConnectYouTube = async () => {
+    setIsConnectingYouTube(true);
+    clearAuthError();
+    clearPopupBlocked();
+    try {
+      const res = await signInWithYouTube();
+      if (res) {
+        setActiveTab('playlists');
+      }
+    } catch (_) {
+    } finally {
+      setIsConnectingYouTube(false);
+    }
+  };
+
+  const handleConnectPublicChannel = async () => {
+    if (!publicChannelQuery.trim()) return;
+    setIsConnectingPublic(true);
+    try {
+      const ok = await connectPublicChannel(publicChannelQuery.trim());
+      if (ok) {
+        setActiveTab('playlists');
+      }
+    } finally {
+      setIsConnectingPublic(false);
+    }
+  };
+
+  const handlePlayYouTubePlaylist = async (playlistId: string) => {
+    setLoadingPlaylistId(playlistId);
+    try {
+      const tracks = await fetchPlaylistTracks(playlistId);
+      if (tracks && tracks.length > 0) {
+        playQueue(tracks, 0, { autoPlay: true });
+        videoContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        alert('এই প্লেলিস্টটিতে কোনো পাবলিক গান পাওয়া যায়নি।');
+      }
+    } catch (e) {
+      console.warn('Failed to load playlist:', e);
+    } finally {
+      setLoadingPlaylistId(null);
+    }
+  };
 
   if (!isOpen || !currentTrack) return null;
 
@@ -289,10 +370,13 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
 
   const host = useNoCookie ? 'www.youtube-nocookie.com' : 'www.youtube.com';
 
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const originParam = currentOrigin ? `&origin=${encodeURIComponent(currentOrigin)}` : '';
+
   // Reliable clean YouTube embed URL without conflicting query parameters
   const embedUrl = videoId
-    ? `https://${host}/embed/${videoId}?autoplay=1&playsinline=1&rel=0&enablejsapi=1`
-    : `https://${host}/embed?listType=search&list=${encodeURIComponent(cleanTitle)}&autoplay=1&playsinline=1&enablejsapi=1`;
+    ? `https://${host}/embed/${videoId}?autoplay=1&playsinline=1&rel=0&enablejsapi=1${originParam}`
+    : `https://${host}/embed?listType=search&list=${encodeURIComponent(cleanTitle)}&autoplay=1&playsinline=1&enablejsapi=1${originParam}`;
 
   const toggleBrowserFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -441,6 +525,44 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
 
           {/* Action buttons */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* YouTube Auth Quick Status / Login Button */}
+            {isYouTubeConnected ? (
+              <button
+                type="button"
+                onClick={() => setActiveTab('playlists')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-red-950/70 to-stone-900 hover:from-red-900/80 text-red-200 border border-red-500/40 text-xs font-semibold cursor-pointer shadow-xs transition-colors"
+                title={`${youtubeUser?.title || 'YouTube Channel'} (কানেক্টেড - প্লেলিস্ট দেখতে ক্লিক করুন)`}
+              >
+                {youtubeUser?.thumbnail ? (
+                  <img
+                    src={youtubeUser.thumbnail}
+                    alt="YouTube"
+                    className="w-4 h-4 rounded-full object-cover border border-red-500 shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <Youtube className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                )}
+                <span className="hidden lg:inline">{youtubeUser?.title ? youtubeUser.title.split(' ')[0] : 'ইউটিউব'}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleConnectYouTube}
+                disabled={isConnectingYouTube}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:brightness-110 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-red-600/25 cursor-pointer transition-all"
+                title="গুগল / ইউটিউব দিয়ে সাইন-ইন করে আপনার নিজস্ব প্লেলিস্ট লোড করুন"
+              >
+                {isConnectingYouTube ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <LogIn className="w-3.5 h-3.5" />
+                )}
+                <span className="hidden sm:inline">ইউটিউব লগইন</span>
+              </button>
+            )}
+
             {/* Autoplay Toggle Badge */}
             <button
               onClick={toggleAutoplay}
@@ -580,6 +702,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
                 <Lightbulb className="w-3 h-3 text-amber-400" /> আইডিয়া:
               </span>
               {[
+                'নতুন বাংলা গান (New Bangla Song)',
                 'কোক স্টুডিও বাংলা',
                 'জেমস নগর বাউল',
                 'আইয়ুব বাচ্চু সেরা গান',
@@ -589,7 +712,6 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
                 'ঘুড়ি তুমি কার আকাশে ওড়ো',
                 'হরিপ্রসাদ চৌরাসিয়া বাঁশি',
                 'Lofi Girl Chill Beats',
-                'Deep sleep relaxing piano rain',
               ].map((query) => (
                 <button
                   key={query}
@@ -610,6 +732,7 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
 
         {/* Video Player Box */}
         <div
+          ref={videoContainerRef}
           className={
             isMinimized
               ? 'relative aspect-video w-full rounded-xl overflow-hidden bg-black border border-stone-800 shadow-md'
@@ -623,13 +746,13 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
             title={cleanTitle}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
+            referrerPolicy="no-referrer-when-downgrade"
             className="w-full h-full border-0"
           />
 
           {/* Next Song Indicator floating on top right of video in fullscreen */}
           {!isMinimized && nextSongInQueue && (
-            <div className="absolute top-3 right-3 z-10 px-3 py-1.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 text-white text-xs flex items-center gap-2 pointer-events-auto">
+            <div className="absolute top-3 right-3 z-10 px-3 py-1.5 rounded-xl bg-black/80 backdrop-blur-md border border-white/10 text-white text-xs flex items-center gap-2 pointer-events-auto shadow-lg">
               <SkipForward className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
               <div className="max-w-[200px] truncate">
                 <span className="text-[10px] text-emerald-400 font-semibold block">পরের গান:</span>
@@ -645,6 +768,61 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* Playback Guarantee & Direct Controls Strip */}
+        {!isMinimized && (
+          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-2xl bg-stone-900/90 border border-stone-800 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="p-1 rounded-md bg-red-600 text-white shrink-0 animate-pulse">
+                <Play className="w-3 h-3 fill-current" />
+              </span>
+              <div className="min-w-0">
+                <span className="font-semibold text-white truncate block max-w-[280px] sm:max-w-md">
+                  {cleanTitle}
+                </span>
+                <span className="text-[10px] text-stone-400">
+                  {artist ? `${artist} • ` : ''}স্বয়ংক্রিয় প্লেব্যাক না হলে নিচের প্লে বোতাম বা রিলোড চাপুন
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setKey((k) => k + 1)}
+                className="px-2.5 py-1 rounded-xl bg-stone-800 hover:bg-stone-750 text-stone-200 text-[11px] font-semibold border border-stone-700 flex items-center gap-1 cursor-pointer"
+                title="প্লেয়ার রিফ্রেশ / রিলোড করুন"
+              >
+                <RotateCcw className="w-3 h-3 text-amber-400" />
+                <span>রিলোড</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUseNoCookie((v) => !v)}
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold border flex items-center gap-1 cursor-pointer transition-colors ${
+                  useNoCookie
+                    ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300'
+                    : 'bg-stone-800 border-stone-700 text-stone-300 hover:text-white'
+                }`}
+                title="নো-কুকি সিকিউর সার্ভার মোড"
+              >
+                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                <span>{useNoCookie ? 'নো-কুকি ON' : 'নো-কুকি মোড'}</span>
+              </button>
+              <a
+                href={watchUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:brightness-110 text-white font-bold text-[11px] shadow-xs"
+                title="কপিরাইটযুক্ত ভিডিও অন্য সাইটে বন্ধ থাকলে সরাসরি মূল ইউটিউব অ্যাপে শুনুন"
+              >
+                <Youtube className="w-3.5 h-3.5" />
+                <span>ইউটিউবে চালান</span>
+                <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Continuous Autoplay Controls & Player Status Bar */}
         {!isMinimized && (
@@ -816,6 +994,19 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
                 >
                   <Heart className="w-3.5 h-3.5 fill-current" />
                   <span>⭐ পছন্দের গান ({favorites.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('playlists')}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'playlists'
+                      ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white shadow-md shadow-red-600/30'
+                      : 'bg-stone-900 hover:bg-stone-850 text-stone-300'
+                  }`}
+                >
+                  <Youtube className="w-3.5 h-3.5 text-red-400" />
+                  <span>🎬 আমার প্লেলিস্ট {isYouTubeConnected ? `(${youtubePlaylists.length})` : ''}</span>
                 </button>
               </div>
 
@@ -1006,10 +1197,64 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
             {/* TAB 2: ACCURATE SEARCH & AI MUSIC IDEAS GENERATOR (একুরেট সার্চ ও আইডিয়া জেনারেটর) */}
             {activeTab === 'search' && (
               <div className="space-y-5">
-                {/* Search Results Grid (if search performed) */}
-                {searchResults.length > 0 && (
+                {/* Search Loading Indicator */}
+                {isSearching && (
+                  <div className="p-8 text-center space-y-3 rounded-3xl bg-stone-900 border border-stone-800 text-stone-300 animate-in fade-in">
+                    <RefreshCw className="w-8 h-8 text-red-500 animate-spin mx-auto" />
+                    <h5 className="text-sm font-bold text-white">একুরেট গান খোঁজা হচ্ছে...</h5>
+                    <p className="text-xs text-stone-400">
+                      {lastSearchedTerm ? `"${lastSearchedTerm}" এর জন্য আসল ইউটিউব ভিডিও যাচাই করা হচ্ছে` : 'ইউটিউব ডাটা থেকে গান আনা হচ্ছে'}
+                    </p>
+                  </div>
+                )}
+
+                {/* No Results Fallback with Quick Bangla Suggestions */}
+                {!isSearching && searchResults.length === 0 && (
+                  <div className="p-6 rounded-3xl bg-stone-900/90 border border-stone-800 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-red-600/20 text-red-400 flex items-center justify-center border border-red-500/30">
+                        <Search className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white">
+                          {lastSearchedTerm ? `"${lastSearchedTerm}" এর জন্য সার্চ` : 'একুরেট ইউটিউব গান খুঁজুন'}
+                        </h4>
+                        <p className="text-xs text-stone-400">
+                          নিচের যেকোনো জনপ্রিয় বাটন ক্লিক করে তাৎক্ষণিক আসল গান শুনুন:
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                      {[
+                        { label: '🔥 নতুন বাংলা গান (New Song Bangla)', query: 'new bangla song নতুন বাংলা গান' },
+                        { label: '🎶 কোক স্টুডিও বাংলা', query: 'coke studio bangla' },
+                        { label: '🎸 জেমস নগর বাউল', query: 'james nagar baul' },
+                        { label: '🎸 আইয়ুব বাচ্চু সেরা গান', query: 'ayub bachchu lrb' },
+                        { label: '💖 রোমান্টিক বাংলা গান', query: 'bangla romantic song' },
+                        { label: '☕ রবিঠাকুরের সেরা গান', query: 'rabindra sangeet' },
+                      ].map((item) => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => {
+                            setInputLinkOrId(item.query);
+                            handlePerformSearch(item.query);
+                          }}
+                          className="p-3 rounded-2xl bg-stone-950/80 hover:bg-stone-850 border border-stone-800 hover:border-red-500/50 text-left text-xs font-semibold text-stone-200 hover:text-white transition-all cursor-pointer flex items-center justify-between group shadow-2xs"
+                        >
+                          <span className="truncate">{item.label}</span>
+                          <Play className="w-3 h-3 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1 fill-current" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Search Results Grid (if search performed and has results) */}
+                {searchResults.length > 0 && !isSearching && (
                   <div className="p-4 rounded-3xl bg-stone-900 border border-stone-800 space-y-3">
-                    <div className="flex items-center justify-between border-b border-stone-800 pb-2.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-800 pb-2.5 gap-2">
                       <div className="flex items-center gap-2">
                         <Youtube className="w-4 h-4 text-red-500" />
                         <h4 className="text-xs sm:text-sm font-bold text-white">
@@ -1523,6 +1768,267 @@ export const MusicPlayerModal: React.FC<MusicPlayerModalProps> = ({
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 6: MY YOUTUBE PLAYLISTS & AUTHENTICATED CHANNEL (আমার ইউটিউব প্লেলিস্ট) */}
+            {activeTab === 'playlists' && (
+              <div className="space-y-4">
+                {!isYouTubeConnected ? (
+                  /* Not connected card */
+                  <div className="p-8 text-center space-y-4 rounded-3xl bg-stone-900/80 border border-red-500/30">
+                    <div className="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center text-white shadow-xl shadow-red-600/30 animate-pulse">
+                      <Youtube className="w-8 h-8" />
+                    </div>
+                    <div className="max-w-md mx-auto space-y-1">
+                      <h4 className="text-base font-bold text-white">আপনার ইউটিউব অ্যাকাউন্ট লিঙ্ক করুন</h4>
+                      <p className="text-xs text-stone-300">
+                        লগইন করার মাধ্যমে আপনার নিজস্ব ইউটিউব চ্যানেলে তৈরি করা প্লেলিস্টগুলো এখানে লোড হবে এবং আপনি নিরবচ্ছিন্নভাবে সবগুলো গান একের পর এক শুনতে পারবেন।
+                      </p>
+                    </div>
+
+                    {isPopupBlocked && (
+                      <div className="max-w-md mx-auto p-3.5 rounded-2xl bg-amber-950/60 border border-amber-500/50 text-amber-200 text-xs text-left space-y-2">
+                        <div className="flex items-center gap-2 font-bold text-amber-300">
+                          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span>ব্রাউজার পপ-আপ ব্লক সমাধান নির্দেশিকা</span>
+                        </div>
+                        <p className="text-[11px] text-amber-100/90 leading-relaxed">
+                          আপনার ব্রাউজার নিরাপত্তার কারণে সাইন-ইন পপ-আপ উইন্ডো আটকে দিয়েছে।
+                          ব্রাউজার অ্যাড্রেসবারে (URL bar) থাকা 🔒 বা 🚫 পপ-আপ আইকনে ক্লিক করে <strong>"Always allow pop-ups"</strong> নির্বাচন করুন।
+                        </p>
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={handleConnectYouTube}
+                            className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-xs"
+                          >
+                            অনুমোদন করে পুনরায় চেষ্টা করুন
+                          </button>
+                          <button
+                            type="button"
+                            onClick={clearPopupBlocked}
+                            className="px-2.5 py-1.5 rounded-xl bg-stone-800 text-stone-300 text-xs"
+                          >
+                            বন্ধ করুন
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {authError && !isPopupBlocked && (
+                      <div className="max-w-md mx-auto p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-200 text-xs flex items-center justify-between">
+                        <span>{authError}</span>
+                        <button onClick={clearAuthError} className="text-rose-400 font-bold p-1">✕</button>
+                      </div>
+                    )}
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleConnectYouTube}
+                        disabled={isConnectingYouTube}
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:brightness-110 disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-red-600/30 cursor-pointer"
+                      >
+                        {isConnectingYouTube ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>গুগল সংযোগ যাচাই হচ্ছে...</span>
+                          </>
+                        ) : (
+                          <>
+                            <LogIn className="w-4 h-4" />
+                            <span>ইউটিউব দিয়ে সাইন-ইন করুন</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Quick Public Channel / Handle Connect without requiring popup */}
+                    <div className="pt-4 border-t border-stone-800 max-w-md mx-auto space-y-2 text-left">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-stone-300">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                        <span>অথবা লগইন ছাড়াই চ্যানেল বা হ্যান্ডেল দিয়ে দেখুন:</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={publicChannelQuery}
+                          onChange={(e) => setPublicChannelQuery(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleConnectPublicChannel()}
+                          placeholder="হ্যান্ডেল বা নাম (যেমন: @tseries, @banglasongs)"
+                          className="flex-1 px-3 py-2 rounded-xl bg-stone-950 border border-stone-800 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-red-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleConnectPublicChannel}
+                          disabled={isConnectingPublic || !publicChannelQuery.trim()}
+                          className="px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-red-700 text-white text-xs font-semibold border border-stone-700 transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                        >
+                          {isConnectingPublic ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'কানেক্ট'}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-stone-500">
+                        পপ-আপ সমস্যা হলে যেকোনো পাবলিক চ্যানেলের প্লেলিস্ট সরাসরি ব্রাউজ ও প্লে করুন।
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  /* Connected playlists and channel details */
+                  <div className="space-y-4">
+                    {/* Channel header banner */}
+                    <div className="p-4 rounded-3xl bg-gradient-to-r from-red-950/60 via-stone-900 to-stone-950 border border-red-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3.5">
+                        {youtubeUser?.thumbnail ? (
+                          <img
+                            src={youtubeUser.thumbnail}
+                            alt="YouTube Channel"
+                            className="w-14 h-14 rounded-2xl object-cover border-2 border-red-500 shadow-md"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 rounded-2xl bg-red-600 text-white flex items-center justify-center font-bold text-lg">
+                            <User className="w-7 h-7" />
+                          </div>
+                        )}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm sm:text-base font-bold text-white">
+                              {youtubeUser?.title || 'YouTube Channel'}
+                            </h4>
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
+                              কানেক্টেড 🟢
+                            </span>
+                          </div>
+                          <p className="text-xs text-stone-400">
+                            {youtubeUser?.customUrl || 'ইউটিউব ডাটা এপিআই সংযুক্ত'}
+                          </p>
+                          <div className="flex items-center gap-3 text-[11px] text-stone-300 pt-0.5">
+                            {youtubeUser?.subscriberCount && (
+                              <span>{Number(youtubeUser.subscriberCount).toLocaleString()} সাবস্ক্রাইবার</span>
+                            )}
+                            {youtubeUser?.videoCount && (
+                              <span>• {Number(youtubeUser.videoCount).toLocaleString()} ভিডিও</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => fetchYouTubePlaylists()}
+                          disabled={isFetchingPlaylists}
+                          className="p-2 rounded-xl bg-stone-900 hover:bg-stone-850 text-stone-300 hover:text-white border border-stone-800 cursor-pointer"
+                          title="প্লেলিস্ট রিফ্রেশ করুন"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isFetchingPlaylists ? 'animate-spin' : ''}`} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={disconnectYouTube}
+                          className="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-rose-950/70 text-stone-400 hover:text-rose-300 text-xs font-semibold border border-stone-800 transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          <span>লগআউট</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Playlists Grid */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                          <ListMusic className="w-4 h-4 text-red-500" />
+                          <span>আপনার ইউটিউব প্লেলিস্টসমূহ ({youtubePlaylists.length})</span>
+                        </h5>
+                        <span className="text-[11px] text-stone-400">
+                          যেকোনো প্লেলিস্টে ক্লিক করে সব গান একসাথে শুনুন
+                        </span>
+                      </div>
+
+                      {isFetchingPlaylists ? (
+                        <div className="p-8 text-center text-xs text-stone-400 space-y-2">
+                          <RefreshCw className="w-6 h-6 mx-auto animate-spin text-red-500" />
+                          <p>প্লেলিস্ট লোড হচ্ছে...</p>
+                        </div>
+                      ) : youtubePlaylists.length === 0 ? (
+                        <div className="p-8 text-center text-xs text-stone-400 rounded-2xl bg-stone-900/40 border border-stone-800 space-y-2">
+                          <ListMusic className="w-8 h-8 mx-auto text-stone-600" />
+                          <p>এই অ্যাকাউন্টে কোনো সংরক্ষিত প্লেলিস্ট পাওয়া যায়নি।</p>
+                          <button
+                            type="button"
+                            onClick={() => fetchYouTubePlaylists()}
+                            className="px-3 py-1 rounded-xl bg-stone-800 text-stone-200 cursor-pointer text-xs"
+                          >
+                            পুনরায় চেক করুন
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[420px] overflow-y-auto pr-1">
+                          {youtubePlaylists.map((pl) => (
+                            <div
+                              key={pl.id}
+                              className="p-3 rounded-2xl bg-stone-900/80 hover:bg-stone-850 border border-stone-800/80 flex flex-col justify-between gap-2.5 transition-all group hover:border-red-500/40"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="relative w-16 h-14 rounded-xl overflow-hidden bg-black shrink-0">
+                                  {pl.thumbnail ? (
+                                    <img
+                                      src={pl.thumbnail}
+                                      alt={pl.title}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-stone-800 text-stone-500">
+                                      <ListMusic className="w-6 h-6" />
+                                    </div>
+                                  )}
+                                  <span className="absolute bottom-1 right-1 px-1 rounded bg-black/80 text-[9px] font-mono text-white">
+                                    {pl.itemCount} গান
+                                  </span>
+                                </div>
+                                <div className="min-w-0 flex-1 space-y-0.5">
+                                  <h6 className="text-xs font-bold text-white truncate" title={pl.title}>
+                                    {pl.title}
+                                  </h6>
+                                  <p className="text-[10px] text-stone-400 truncate">
+                                    {pl.itemCount}টি গান • ইউটিউব প্লেলিস্ট
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handlePlayYouTubePlaylist(pl.id)}
+                                  disabled={loadingPlaylistId === pl.id}
+                                  className="flex-1 py-1.5 px-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:brightness-110 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-all disabled:opacity-50"
+                                >
+                                  {loadingPlaylistId === pl.id ? (
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Play className="w-3.5 h-3.5 fill-current" />
+                                  )}
+                                  <span>{loadingPlaylistId === pl.id ? 'লোড হচ্ছে...' : 'সবগুলো চালান (Play All)'}</span>
+                                </button>
+                                <a
+                                  href={`https://www.youtube.com/playlist?list=${pl.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 rounded-xl bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white transition-colors"
+                                  title="ইউটিউব সাইটে খুলুন"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

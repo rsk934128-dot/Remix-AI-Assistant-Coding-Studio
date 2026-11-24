@@ -49,6 +49,8 @@ You excel in:
 5. Learning & Conceptual Explanations.
 6. All Apps Open & Universal Connect (সকল অ্যাপস ওপেন ও কানেক্ট করা):
    - You can connect to, launch, and provide direct action links for all major services:
+     * হোটেল আল শেখ ফরিদ (Hotel Al Sheikh Farid PWA): https://1-lac-gamma.vercel.app/ (অনলাইন খাবার অর্ডার, ডেলিভারি, মেনু ও টেবিল বুকিং | প্রোপাইটার: মো: আব্দুল বারিক শেখ, সিরাজগঞ্জ)
+     * ForTrade Pro Trading Terminal (PWA): https://fortrade-pro-trading-terminal-dev-d-nine.vercel.app/?source=pwa
      * Gmail: https://mail.google.com (Inbox, Compose, Search)
      * GitHub (Sheikh Farid's Official Profile): https://github.com/rsk934128-dot (139+ public repositories)
      * WhatsApp: https://web.whatsapp.com and direct chat links
@@ -56,9 +58,8 @@ You excel in:
      * YouTube: In-app Media Studio & https://youtube.com
      * Google Maps: In-app GPS & https://maps.google.com
      * Facebook & Messenger: https://www.facebook.com/rubelrubel.rubel.98 (Sheikh Farid's Facebook)
-     * ForTrade Pro Trading Terminal (PWA): https://fortrade-pro-trading-terminal-dev-d-nine.vercel.app/?source=pwa
      * Telegram, LinkedIn, Twitter/X
-   - When a user asks "ইউটিউব ওপেন করো", "গিটহাব ওপেন করো", "ড্রাইভ ওপেন করো", "জিমেইল ওপেন করো" বা "ট্রেডিং টার্মিনাল / ForTrade ওপেন করো" — always provide direct, working Markdown action links with descriptive labels.
+   - When a user asks "হোটেল আল শেখ ফরিদ ওপেন করো", "খাবার অর্ডার করবো", "ইউটিউব ওপেন করো", "গিটহাব ওপেন করো", "ড্রাইভ ওপেন করো", "জিমেইল ওপেন করো" বা "ট্রেডিং টার্মিনাল / ForTrade ওপেন করো" — always provide direct, working Markdown action links with descriptive labels.
 
 7. Sending Instant Messages (মেসেজ পাঠানো - WhatsApp, SMS, Telegram):
    - When the user asks to send a message (e.g. "মেসেজ পাঠাও", "হোয়াটসঅ্যাপে মেসেজ দাও", "কাউকে এসএমএস করো", "একটি বার্তা পাঠাও"):
@@ -166,10 +167,8 @@ export async function callDirectGeminiStream(options: DirectGeminiStreamOptions)
 
   // Models to try with multi-family fallback support
   const modelsToTry = [
-    'gemini-3.8-flash',
-    'gemini-flash-latest',
-    'gemini-3.1-flash-lite',
-    'gemini-4-argon',
+    'gemini-3.5-flash-lite',
+    'gemini-3-flash-preview',
   ];
   let lastError: any = null;
   let currentPayload = { ...payload };
@@ -309,7 +308,7 @@ export async function generateDirectSessionTitle(userMessage: string): Promise<s
   }
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -373,7 +372,7 @@ Output ONLY valid JSON:
 }
 `;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -439,7 +438,7 @@ Output ONLY valid JSON:
 }
 `;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

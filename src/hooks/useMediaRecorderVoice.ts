@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { authenticatedFetch } from '../utils/apiAuth';
 
 export type VoiceLanguage = 'bn-BD' | 'en-US';
 
@@ -135,7 +136,7 @@ export function useMediaRecorderVoice({
         reader.readAsDataURL(blob);
       });
 
-      const response = await fetch('/api/transcribe', {
+      const response = await authenticatedFetch('/api/transcribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

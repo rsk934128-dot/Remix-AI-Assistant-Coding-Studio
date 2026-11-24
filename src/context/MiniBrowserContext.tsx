@@ -34,7 +34,7 @@ const MiniBrowserContext = createContext<MiniBrowserContextType | undefined>(und
 
 export const MiniBrowserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeUrl, setActiveUrl] = useState('https://www.google.com');
+  const [activeUrl, setActiveUrl] = useState('https://en.wikipedia.org/wiki/Main_Page');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeVideoId, setActiveVideoId] = useState<string | undefined>(undefined);
   const [activeVideoTitle, setActiveVideoTitle] = useState<string | undefined>(undefined);
@@ -51,9 +51,12 @@ export const MiniBrowserProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     if (urlOrQuery) {
       const trimmed = urlOrQuery.trim();
-      // If it's a google domain, default to the search engine tab
-      if (/^https?:\/\/(?:www\.)?google\.[a-z.]+(?:\/)?$/i.test(trimmed)) {
+      // If it's a google domain, default to the native search engine tab to avoid iframe block
+      if (/^(?:https?:\/\/)?(?:www\.)?google\.[a-z.]+(?:\/)?$/i.test(trimmed)) {
         setActiveTab('search');
+        setSearchQuery('');
+        setIsOpen(true);
+        return;
       } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
         setActiveUrl(trimmed);
         const ytMatch = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/i);

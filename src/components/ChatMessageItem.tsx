@@ -41,13 +41,27 @@ import {
   Sliders,
   Hash,
   WrapText,
+  Zap,
+  ArrowUpRight,
+  RefreshCw,
 } from 'lucide-react';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
 import { useMiniBrowser } from '../context/MiniBrowserContext';
 import { ChatMessage, GroundingChunk } from '../types';
-import { ContinuousTTSPlayer } from '../utils/textToSpeech';
+import { ContinuousTTSPlayer, TTSLanguage } from '../utils/textToSpeech';
 import { highlightCode, normalizeLanguage, getExtensionForLanguage } from '../utils/prismLanguages';
 import { SearchGroundingSources } from './SearchGroundingSources';
+import { UniversalVideoPlayerCard } from './UniversalVideoPlayerCard';
+import { UniversalImageCard } from './UniversalImageCard';
+import { AIPictureCard } from './AIPictureCard';
+import { 
+  isDirectVideoUrl, 
+  isImageUrl, 
+  extractVimeoId, 
+  extractDailymotionId, 
+  extractDriveVideoId, 
+  autoFormatMediaLinks 
+} from '../utils/mediaUtils';
 
 interface ChatMessageItemProps {
   message: ChatMessage;
@@ -57,6 +71,11 @@ interface ChatMessageItemProps {
   onEditMessage?: (messageId: string, newText: string) => void;
   onShareMessage?: (text: string) => void;
   onOpenHostingGuide?: () => void;
+  onRegeneratePicture?: (prompt: string, aspectRatio?: string) => void;
+  onOpenPictureStudio?: (prompt: string, aspectRatio?: string) => void;
+  onOpenTTSSettings?: () => void;
+  onRefreshSmartReplies?: (messageId: string) => void;
+  isLastMessage?: boolean;
   isGenerating?: boolean;
 }
 
@@ -870,6 +889,11 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   onEditMessage,
   onShareMessage,
   onOpenHostingGuide,
+  onRegeneratePicture,
+  onOpenPictureStudio,
+  onOpenTTSSettings,
+  onRefreshSmartReplies,
+  isLastMessage = false,
   isGenerating = false,
 }) => {
   const miniBrowser = useMiniBrowser();
@@ -883,6 +907,24 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       return saved ? parseFloat(saved) : 0.85;
     } catch {
       return 0.85;
+    }
+  });
+  const [speechLanguage, setSpeechLanguage] = useState<TTSLanguage>(() => {
+    try {
+      const saved = localStorage.getItem('ai_preferred_tts_lang');
+      if (saved === 'bn' || saved === 'en' || saved === 'auto') {
+        return saved;
+      }
+      return 'auto';
+    } catch {
+      return 'auto';
+    }
+  });
+  const [preferredMode, setPreferredMode] = useState<'natural' | 'browser'>(() => {
+    try {
+      return (localStorage.getItem('ai_preferred_tts_mode') as 'natural' | 'browser') || 'natural';
+    } catch {
+      return 'natural';
     }
   });
   const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false);
@@ -910,7 +952,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   const [isVoiceMenuOpen, setIsVoiceMenuOpen] = useState(false);
   const voiceMenuRef = useRef<HTMLDivElement>(null);
 
-  // Sync speed changes across app
+  // Sync TTS settings (speed, language, voice, mode) across app
   useEffect(() => {
     const handleSpeedEvent = (e: any) => {
       if (e?.detail && typeof e.detail === 'number') {
@@ -918,9 +960,51 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         ttsPlayerRef.current?.updateOptions({ speed: e.detail });
       }
     };
+    const handleLangEvent = (e: any) => {
+      if (e?.detail === 'auto' || e?.detail === 'bn' || e?.detail === 'en') {
+        setSpeechLanguage(e.detail);
+        ttsPlayerRef.current?.updateOptions({ language: e.detail });
+      }
+    };
+    const handleVoiceEvent = (e: any) => {
+      if (typeof e?.detail === 'string') {
+        setSelectedVoiceURI(e.detail);
+        ttsPlayerRef.current?.updateOptions({ voiceURI: e.detail });
+      }
+    };
+    const handleModeEvent = (e: any) => {
+      if (e?.detail === 'natural' || e?.detail === 'browser') {
+        setPreferredMode(e.detail);
+        ttsPlayerRef.current?.updateOptions({ preferredMode: e.detail });
+      }
+    };
     window.addEventListener('tts-speed-changed', handleSpeedEvent);
-    return () => window.removeEventListener('tts-speed-changed', handleSpeedEvent);
+    window.addEventListener('tts-lang-changed', handleLangEvent);
+    window.addEventListener('tts-voice-changed', handleVoiceEvent);
+    window.addEventListener('tts-mode-changed', handleModeEvent);
+    return () => {
+      window.removeEventListener('tts-speed-changed', handleSpeedEvent);
+      window.removeEventListener('tts-lang-changed', handleLangEvent);
+      window.removeEventListener('tts-voice-changed', handleVoiceEvent);
+      window.removeEventListener('tts-mode-changed', handleModeEvent);
+    };
   }, []);
+
+  useEffect(() => {
+    const handleStopOtherMessages = (e: Event) => {
+      const activeId = (e as CustomEvent<string>).detail;
+      if (activeId && activeId !== message.id && ttsPlayerRef.current?.getIsSpeaking()) {
+        ttsPlayerRef.current.stop();
+        setIsSpeaking(false);
+        setIsPaused(false);
+        setActiveChunk(0);
+        setTotalChunks(0);
+        setCurrentReadingSentence('');
+      }
+    };
+    window.addEventListener('tts-stop-other-messages', handleStopOtherMessages);
+    return () => window.removeEventListener('tts-stop-other-messages', handleStopOtherMessages);
+  }, [message.id]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -979,23 +1063,52 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     (v) => v.voiceURI === selectedVoiceURI || v.name === selectedVoiceURI
   );
 
-  const currentVoiceLabel = selectedVoiceURI === 'auto'
-    ? 'স্বয়ংক্রিয়'
-    : currentSelectedVoice
-    ? formatVoiceName(currentSelectedVoice.name)
-    : 'কণ্ঠ';
+  const currentVoiceLabel =
+    selectedVoiceURI !== 'auto' && currentSelectedVoice
+      ? formatVoiceName(currentSelectedVoice.name)
+      : speechLanguage === 'bn'
+      ? 'বাংলা'
+      : speechLanguage === 'en'
+      ? 'English'
+      : 'স্বয়ংক্রিয়';
+
+  const handleLanguageSelect = (lang: TTSLanguage) => {
+    setSpeechLanguage(lang);
+    setSelectedVoiceURI('auto');
+    setIsVoiceMenuOpen(false);
+    try {
+      localStorage.setItem('ai_preferred_tts_lang', lang);
+      localStorage.setItem('ai_preferred_tts_voice', 'auto');
+      window.dispatchEvent(new CustomEvent('tts-lang-changed', { detail: lang }));
+      window.dispatchEvent(new CustomEvent('tts-voice-changed', { detail: 'auto' }));
+    } catch {}
+
+    if (ttsPlayerRef.current) {
+      ttsPlayerRef.current.updateOptions({
+        language: lang,
+        voiceURI: 'auto',
+        preferredMode,
+      });
+      if (isSpeaking) {
+        ttsPlayerRef.current.jumpToChunk(activeChunk);
+      }
+    }
+  };
 
   const handleVoiceSelect = (voiceURI: string) => {
     setSelectedVoiceURI(voiceURI);
     setIsVoiceMenuOpen(false);
     try {
       localStorage.setItem('ai_preferred_tts_voice', voiceURI);
+      window.dispatchEvent(new CustomEvent('tts-voice-changed', { detail: voiceURI }));
     } catch {}
 
+    const effectiveMode = voiceURI === 'auto' ? preferredMode : 'browser';
     if (ttsPlayerRef.current) {
       ttsPlayerRef.current.updateOptions({
         voiceURI,
-        preferredMode: voiceURI === 'auto' ? 'natural' : 'browser',
+        language: speechLanguage,
+        preferredMode: effectiveMode,
       });
       if (isSpeaking) {
         ttsPlayerRef.current.jumpToChunk(activeChunk);
@@ -1028,14 +1141,11 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Auto-format bare YouTube URLs (watch?v=, youtu.be/, shorts/, embed/) into markdown links
-  // so that react-markdown automatically renders them as rich in-app YouTube player cards
+  // Auto-format bare Video and Image URLs into markdown links & images
+  // so that react-markdown automatically renders them as rich in-app media players & image cards
   const autoFormatYouTubeLinks = (rawText: string): string => {
     if (!rawText) return '';
-    return rawText.replace(
-      /(?<!\]\(|href=["'])(https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?(?:[^\s)]*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)[a-zA-Z0-9_-]{11}[^\s<>"')]*)/gi,
-      (match) => `[ইউটিউব গান / ভিডিও](${match})`
-    );
+    return autoFormatMediaLinks(rawText);
   };
 
   // Clean text for text-to-speech (remove markdown syntax, codeblocks, links)
@@ -1053,11 +1163,13 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       .trim();
   };
 
-  const getOrCreateTTSPlayer = (rate = speechSpeed) => {
+  const getOrCreateTTSPlayer = (rate = speechSpeed, modeOverride?: 'natural' | 'browser') => {
+    const effectiveMode = modeOverride ?? (selectedVoiceURI === 'auto' ? preferredMode : 'browser');
     if (!ttsPlayerRef.current) {
       ttsPlayerRef.current = new ContinuousTTSPlayer({
         speed: rate,
-        preferredMode: selectedVoiceURI === 'auto' ? 'natural' : 'browser',
+        language: speechLanguage,
+        preferredMode: effectiveMode,
         voiceURI: selectedVoiceURI,
         onChunkStart: (index, total, chunkText) => {
           setActiveChunk(index);
@@ -1084,8 +1196,9 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
     } else {
       ttsPlayerRef.current.updateOptions({
         speed: rate,
+        language: speechLanguage,
         voiceURI: selectedVoiceURI,
-        preferredMode: selectedVoiceURI === 'auto' ? 'natural' : 'browser',
+        preferredMode: effectiveMode,
       });
     }
     return ttsPlayerRef.current;
@@ -1102,7 +1215,31 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
       return;
     }
 
+    window.dispatchEvent(new CustomEvent('tts-stop-other-messages', { detail: message.id }));
     const player = getOrCreateTTSPlayer(rate);
+    setIsSpeaking(true);
+    setIsPaused(false);
+    player.play(message.text, 0);
+  };
+
+  const handleQuickWebSpeechToggle = () => {
+    if (isSpeaking) {
+      if (isPaused) {
+        handleResumeSpeaking();
+      } else {
+        handlePauseSpeaking();
+      }
+      return;
+    }
+
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      setSpeechWarning('আপনার ব্রাউজারে Web Speech API (Text-to-Speech) সমর্থিত নয়।');
+      setTimeout(() => setSpeechWarning(null), 5000);
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent('tts-stop-other-messages', { detail: message.id }));
+    const player = getOrCreateTTSPlayer(speechSpeed, 'browser');
     setIsSpeaking(true);
     setIsPaused(false);
     player.play(message.text, 0);
@@ -1223,6 +1360,10 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
         </div>
       );
     },
+    img({ src, alt, title }: any) {
+      if (!src) return null;
+      return <UniversalImageCard src={src} alt={alt} title={title} />;
+    },
     a({ href, children }: any) {
       if (!href) return <span>{children}</span>;
 
@@ -1244,6 +1385,17 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
       if (isYoutube && videoId) {
         return <YouTubeEmbedCard href={href} videoId={videoId} title={children} />;
+      }
+
+      // 2b. Check if it's Vimeo, Dailymotion, Google Drive video or Direct Video file (.mp4, .webm, etc.)
+      if (extractVimeoId(href) || extractDailymotionId(href) || extractDriveVideoId(href) || isDirectVideoUrl(href)) {
+        return <UniversalVideoPlayerCard src={href} title={children} />;
+      }
+
+      // 2c. Check if it's a direct image file or hosted image URL (.jpg, .png, .gif, .webp, .svg, Unsplash, etc.)
+      if (isImageUrl(href)) {
+        const altText = typeof children === 'string' && !children.startsWith('http') ? children : 'ছবি';
+        return <UniversalImageCard src={href} alt={altText} />;
       }
 
       // 3. Check if it's a Gmail compose or mailto link
@@ -1368,11 +1520,63 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
 
         {/* Message body */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">
-              {isUser ? 'You' : 'AI Assistant (Gemini 3.8 Flash)'}
-            </span>
-            <span className="text-[11px] text-stone-400 font-mono">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs font-semibold text-stone-700 dark:text-stone-300 truncate">
+                {isUser ? 'You' : 'AI Assistant (Gemini 3.8 Flash)'}
+              </span>
+              {!isUser && !message.isStreaming && message.text && (
+                <div className="inline-flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    id={`ai-quick-speak-btn-${message.id}`}
+                    onClick={handleQuickWebSpeechToggle}
+                    aria-label={
+                      isSpeaking
+                        ? isPaused
+                          ? 'Resume reading aloud'
+                          : 'Pause reading aloud'
+                        : 'Play message aloud'
+                    }
+                    title={
+                      isSpeaking
+                        ? isPaused
+                          ? 'আবার শুনুন (Resume)'
+                          : 'পজ করুন (Pause)'
+                        : 'Web Speech API দিয়ে পড়ে শোনান (Play)'
+                    }
+                    className={`inline-flex items-center justify-center w-6 h-6 rounded-md border transition-all cursor-pointer ${
+                      isSpeaking
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white/90 hover:bg-emerald-50 dark:bg-stone-800/90 dark:hover:bg-emerald-950/60 text-stone-500 hover:text-emerald-600 dark:text-stone-400 dark:hover:text-emerald-400 border-stone-200/80 dark:border-stone-700/80 hover:border-emerald-300 dark:hover:border-emerald-700'
+                    }`}
+                  >
+                    {isSpeaking ? (
+                      isPaused ? (
+                        <Play className="w-3 h-3 fill-current" />
+                      ) : (
+                        <Pause className="w-3 h-3" />
+                      )
+                    ) : (
+                      <Volume2 className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  {isSpeaking && (
+                    <button
+                      type="button"
+                      id={`ai-quick-stop-btn-${message.id}`}
+                      onClick={handleStopSpeaking}
+                      aria-label="Stop reading aloud"
+                      title="পড়া থামান (Stop)"
+                      className="inline-flex items-center justify-center w-6 h-6 rounded-md border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                    >
+                      <Square className="w-2.5 h-2.5 fill-current" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            <span className="text-[11px] text-stone-400 font-mono shrink-0">
               {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
@@ -1458,9 +1662,18 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             </div>
           ) : (
             <div className="text-sm prose-stone dark:prose-invert max-w-none break-words">
-              <Markdown components={MarkdownComponents}>
-                {autoFormatYouTubeLinks(message.text)}
-              </Markdown>
+              {message.generatedImage && (
+                <AIPictureCard
+                  imageMeta={message.generatedImage}
+                  onRegenerate={onRegeneratePicture}
+                  onOpenStudio={onOpenPictureStudio}
+                />
+              )}
+              {message.text && (
+                <Markdown components={MarkdownComponents}>
+                  {autoFormatYouTubeLinks(message.text)}
+                </Markdown>
+              )}
             </div>
           )}
 
@@ -1589,30 +1802,40 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                           </span>
                         </div>
 
-                        {/* Auto detect option */}
-                        <div className="py-1">
-                          <button
-                            type="button"
-                            onClick={() => handleVoiceSelect('auto')}
-                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors cursor-pointer ${
-                              selectedVoiceURI === 'auto'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-medium'
-                                : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
-                            }`}
-                          >
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                <span className="font-semibold">স্বয়ংক্রিয় (Auto Detect)</span>
-                              </div>
-                              <p className="text-[10px] text-stone-500 dark:text-stone-400 pl-5">
-                                লেখা অনুযায়ী বাংলা বা ইংরেজি স্বয়ংক্রিয় কণ্ঠ
-                              </p>
-                            </div>
-                            {selectedVoiceURI === 'auto' && (
-                              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            )}
-                          </button>
+                        {/* Language Selection (Auto / Bengali / English) */}
+                        <div className="py-1 space-y-0.5">
+                          <div className="px-2 py-0.5 text-[10px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">
+                            ভাষা (Language)
+                          </div>
+                          {[
+                            { id: 'auto' as TTSLanguage, label: '✨ স্বয়ংক্রিয় (Auto Detect)', desc: 'লেখা অনুযায়ী বাংলা বা ইংরেজি' },
+                            { id: 'bn' as TTSLanguage, label: '🇧🇩 বাংলা (Bengali)', desc: 'সবসময় বাংলা কণ্ঠস্বর' },
+                            { id: 'en' as TTSLanguage, label: '🌐 ইংরেজি (English)', desc: 'সবসময় ইংরেজি কণ্ঠস্বর' },
+                          ].map((langOpt) => {
+                            const isSelected = selectedVoiceURI === 'auto' && speechLanguage === langOpt.id;
+                            return (
+                              <button
+                                key={langOpt.id}
+                                type="button"
+                                onClick={() => handleLanguageSelect(langOpt.id)}
+                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-medium'
+                                    : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+                                }`}
+                              >
+                                <div>
+                                  <div className="font-semibold">{langOpt.label}</div>
+                                  <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                                    {langOpt.desc}
+                                  </p>
+                                </div>
+                                {isSelected && (
+                                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
 
                         {/* Bengali Voices Section */}
@@ -1768,6 +1991,20 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                       </div>
                     )}
                   </div>
+
+                  {/* Direct Button to Open Full TTS Settings Panel */}
+                  {onOpenTTSSettings && (
+                    <button
+                      type="button"
+                      id={`ai-tts-settings-btn-${message.id}`}
+                      onClick={onOpenTTSSettings}
+                      title="Text-to-Speech (TTS) পূর্ণাঙ্গ সেটিংস প্যানেল খুলুন"
+                      className="flex items-center gap-1 px-2 py-1 text-[11px] rounded border-l border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-stone-200/60 dark:hover:bg-stone-700/50 transition-colors cursor-pointer"
+                    >
+                      <Sliders className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="hidden sm:inline">TTS সেটিংস</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 /* Active Audio Playback Bar */
@@ -1896,25 +2133,35 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                           </span>
                         </div>
 
-                        {/* Auto detect */}
-                        <div className="py-1">
-                          <button
-                            type="button"
-                            onClick={() => handleVoiceSelect('auto')}
-                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors cursor-pointer ${
-                              selectedVoiceURI === 'auto'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-medium'
-                                : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                              <span className="font-semibold">স্বয়ংক্রিয় (Auto Detect)</span>
-                            </div>
-                            {selectedVoiceURI === 'auto' && (
-                              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            )}
-                          </button>
+                        {/* Language Selection (Auto / Bengali / English) */}
+                        <div className="py-1 space-y-0.5">
+                          <div className="px-2 py-0.5 text-[10px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">
+                            ভাষা (Language)
+                          </div>
+                          {[
+                            { id: 'auto' as TTSLanguage, label: '✨ স্বয়ংক্রিয় (Auto Detect)' },
+                            { id: 'bn' as TTSLanguage, label: '🇧🇩 বাংলা (Bengali)' },
+                            { id: 'en' as TTSLanguage, label: '🌐 ইংরেজি (English)' },
+                          ].map((langOpt) => {
+                            const isSelected = selectedVoiceURI === 'auto' && speechLanguage === langOpt.id;
+                            return (
+                              <button
+                                key={langOpt.id}
+                                type="button"
+                                onClick={() => handleLanguageSelect(langOpt.id)}
+                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-medium'
+                                    : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800'
+                                }`}
+                              >
+                                <span className="font-semibold">{langOpt.label}</span>
+                                {isSelected && (
+                                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
 
                         {/* Bengali Voices */}
@@ -2033,6 +2280,85 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
               </button>
             </div>
           )}
+
+          {/* Intelligent Smart Reply Follow-up Suggestions (Last AI Message) */}
+          {!isUser &&
+            !message.isStreaming &&
+            !message.error &&
+            isLastMessage &&
+            (message.isGeneratingSmartReplies ||
+              (Array.isArray(message.smartReplies) && message.smartReplies.length > 0)) && (
+              <div
+                id={`smart-replies-section-${message.id}`}
+                className="mt-3 pt-2.5 border-t border-stone-200/50 dark:border-stone-800/50 space-y-2 animate-in fade-in duration-200"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-stone-500 dark:text-stone-400">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>স্মার্ট রিপ্লাই</span>
+                    <span className="text-[10px] font-normal text-stone-400 dark:text-stone-500">
+                      • পরবর্তী প্রশ্ন বা কাজ বেছে নিন
+                    </span>
+                  </div>
+                  {onRefreshSmartReplies && !message.isGeneratingSmartReplies && !isGenerating && (
+                    <button
+                      type="button"
+                      onClick={() => onRefreshSmartReplies(message.id)}
+                      title="নতুন স্মার্ট রিপ্লাই সাজেশন তৈরি করুন"
+                      className="p-1 rounded-md text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {message.isGeneratingSmartReplies &&
+                (!message.smartReplies || message.smartReplies.length === 0) ? (
+                  <div className="flex flex-wrap gap-2">
+                    <div className="h-8 w-40 rounded-xl bg-stone-200/70 dark:bg-stone-800/70 animate-pulse" />
+                    <div className="h-8 w-48 rounded-xl bg-stone-200/70 dark:bg-stone-800/70 animate-pulse [animation-delay:120ms]" />
+                    <div className="h-8 w-36 rounded-xl bg-stone-200/70 dark:bg-stone-800/70 animate-pulse [animation-delay:240ms]" />
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {(message.smartReplies || []).slice(0, 3).map((suggestion, sIdx) => {
+                      const text =
+                        typeof suggestion === 'string' ? suggestion : suggestion.text;
+                      const kind =
+                        typeof suggestion === 'string' ? 'question' : suggestion.type;
+                      const isAction = kind === 'action';
+
+                      return (
+                        <button
+                          key={`${message.id}-smart-reply-${sIdx}`}
+                          type="button"
+                          disabled={isGenerating || !onSelectPrompt}
+                          onClick={() => onSelectPrompt?.(text)}
+                          title={
+                            isAction
+                              ? `অ্যাকশন: ${text}`
+                              : `প্রশ্ন: ${text}`
+                          }
+                          className={`group/chip inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-left border transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isAction
+                              ? 'bg-emerald-50/70 hover:bg-emerald-100/90 dark:bg-emerald-950/35 dark:hover:bg-emerald-900/50 text-emerald-900 dark:text-emerald-200 border-emerald-200/90 dark:border-emerald-800/70 hover:border-emerald-400 dark:hover:border-emerald-600'
+                              : 'bg-white hover:bg-stone-50 dark:bg-stone-850 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-200 border-stone-200 dark:border-stone-750 hover:border-emerald-300 dark:hover:border-emerald-700 hover:text-emerald-700 dark:hover:text-emerald-300'
+                          }`}
+                        >
+                          {isAction ? (
+                            <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          ) : (
+                            <HelpCircle className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                          )}
+                          <span className="leading-snug">{text}</span>
+                          <ArrowUpRight className="w-3 h-3 opacity-45 group-hover/chip:opacity-100 group-hover/chip:translate-x-0.5 group-hover/chip:-translate-y-0.5 transition-all shrink-0" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
         </div>
       </div>
     </div>

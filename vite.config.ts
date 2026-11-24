@@ -149,11 +149,19 @@ export default defineConfig(() => {
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MiB to accommodate bundles
-          navigateFallbackDenylist: [/^\/api(\/.*)?$/i],
+          navigateFallbackDenylist: [/^\/api(\/.*)?$/i, /^\/__\//i],
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           runtimeCaching: [
             {
               urlPattern: /^\/api(\/.*)?$/i,
+              handler: 'NetworkOnly',
+            },
+            {
+              urlPattern: /^\/__\//i,
+              handler: 'NetworkOnly',
+            },
+            {
+              urlPattern: /^https:\/\/(identitytoolkit|securetoken|accounts)\.google(apis)?\.com\/.*/i,
               handler: 'NetworkOnly',
             },
             {

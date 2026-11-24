@@ -152,4 +152,70 @@ html, body {
   padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
+/* ==========================================================================
+   Print-Friendly Chat Session PDF Styles
+   ========================================================================== */
+@page {
+  size: A4;
+  margin: 14mm 12mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  body.printing-chat-session #app-main-shell {
+    display: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  #chat-print-modal-backdrop {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    height: auto !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    overflow: visible !important;
+  }
+
+  #chat-print-sheet {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .print-message-card {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  pre,
+  code {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+  }
+}
+
+
 

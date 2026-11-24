@@ -30,9 +30,26 @@ import {
   Network,
   AlertCircle,
   TrendingUp,
-  LineChart
+  LineChart,
+  Utensils,
+  Cpu,
+  Briefcase,
+  ShieldAlert,
+  CreditCard,
+  Download,
+  Wallet,
+  Plane,
+  Package,
+  MessagesSquare,
+  Loader2,
+  FileText,
+  Rocket
 } from 'lucide-react';
 import { useMiniBrowser } from '../context/MiniBrowserContext';
+import { useAuth } from '../context/AuthContext';
+import { sendGmailMessage, createGmailDraft, parseEmailRecipients } from '../lib/gmailService';
+import { GoogleSignInButton } from './GoogleSignInButton';
+import { GmailConfirmModal } from './GmailConfirmModal';
 
 export type UniversalTab = 'apps' | 'gmail' | 'message' | 'github' | 'people' | 'ddns';
 
@@ -42,6 +59,16 @@ interface UniversalAppsConnectModalProps {
   onSendToChat?: (prompt: string) => void;
   onOpenGoogleDrive?: () => void;
   onOpenEmailComposer?: () => void;
+  onOpenShurukkhaHub?: () => void;
+  onOpenPortfolioPwa?: () => void;
+  onOpenOmniSafeBrowser?: () => void;
+  onOpenPaymentGatewayHub?: () => void;
+  onOpenVideoAudioDownloader?: () => void;
+  onOpenPayHubDisbursement?: () => void;
+  onOpenUaeVisaHub?: () => void;
+  onOpenApkEditorStudio?: () => void;
+  onOpenPulseSms?: () => void;
+  onOpenGitHubBusinessHub?: (repo?: GitHubRepoItem) => void;
   initialTab?: UniversalTab;
 }
 
@@ -169,9 +196,20 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
   onSendToChat,
   onOpenGoogleDrive,
   onOpenEmailComposer,
+  onOpenShurukkhaHub,
+  onOpenPortfolioPwa,
+  onOpenOmniSafeBrowser,
+  onOpenPaymentGatewayHub,
+  onOpenVideoAudioDownloader,
+  onOpenPayHubDisbursement,
+  onOpenUaeVisaHub,
+  onOpenApkEditorStudio,
+  onOpenPulseSms,
+  onOpenGitHubBusinessHub,
   initialTab = 'apps',
 }) => {
   const miniBrowser = useMiniBrowser();
+  const { user, gmailAccessToken, isGmailConnected, signInWithGmail, disconnectGmail, authError, clearAuthError } = useAuth();
   const [activeTab, setActiveTab] = useState<UniversalTab>(initialTab);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -179,6 +217,10 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
   const [gmailTo, setGmailTo] = useState('');
   const [gmailSubject, setGmailSubject] = useState('');
   const [gmailBody, setGmailBody] = useState('');
+  const [isConnectingGmail, setIsConnectingGmail] = useState(false);
+  const [confirmGmailMode, setConfirmGmailMode] = useState<'send' | 'draft' | null>(null);
+  const [isSendingGmail, setIsSendingGmail] = useState(false);
+  const [gmailApiStatus, setGmailApiStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Message State
   const [msgPhone, setMsgPhone] = useState('');
@@ -361,6 +403,116 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
     const su = encodeURIComponent(gmailSubject.trim());
     const body = encodeURIComponent(gmailBody.trim());
     return `mailto:${to}?subject=${su}&body=${body}`;
+  };
+
+  useEffect(() => {
+    if (isOpen && authError) {
+      setGmailApiStatus({ type: 'error', message: authError });
+      clearAuthError();
+    }
+  }, [isOpen, authError, clearAuthError]);
+
+  const handleConnectGmail = async () => {
+    setIsConnectingGmail(true);
+    setGmailApiStatus(null);
+    try {
+      const token = await signInWithGmail();
+      if (!token) {
+        setGmailApiStatus((prev) => prev || { type: 'error', message: 'Gmail সংযোগ অনুমোদিত হয়নি।' });
+      }
+    } catch (err: any) {
+      setGmailApiStatus({ type: 'error', message: err?.message || 'Gmail সংযোগ করতে সমস্যা হয়েছে।' });
+    } finally {
+      setIsConnectingGmail(false);
+    }
+  };
+
+  const handleRequestDirectGmail = async (mode: 'send' | 'draft') => {
+    setGmailApiStatus(null);
+    if (mode === 'send' && parseEmailRecipients(gmailTo).length === 0) {
+      setGmailApiStatus({
+        type: 'error',
+        message: 'সঠিক প্রাপকের ইমেইল ঠিকানা (To) দিন (যেমন: client@gmail.com)।',
+      });
+      return;
+    }
+    if (!gmailSubject.trim() && !gmailBody.trim()) {
+      setGmailApiStatus({
+        type: 'error',
+        message: 'ইমেইলের বিষয় অথবা মূল বার্তা লিখুন।',
+      });
+      return;
+    }
+    if (!gmailAccessToken) {
+      setIsConnectingGmail(true);
+      try {
+        const token = await signInWithGmail();
+        if (!token) {
+          setGmailApiStatus({
+            type: 'error',
+            message: 'সরাসরি Gmail পাঠাতে আগে Google দিয়ে সাইন ইন করুন।',
+          });
+          return;
+        }
+      } finally {
+        setIsConnectingGmail(false);
+      }
+    }
+    setConfirmGmailMode(mode);
+  };
+
+  const handleConfirmDirectGmail = async () => {
+    if (!confirmGmailMode) return;
+    let activeToken = gmailAccessToken;
+    if (!activeToken) {
+      activeToken = await signInWithGmail();
+      if (!activeToken) {
+        setConfirmGmailMode(null);
+        return;
+      }
+    }
+    setIsSendingGmail(true);
+    try {
+      if (confirmGmailMode === 'draft') {
+        const res = await createGmailDraft(activeToken, {
+          from: user?.email || undefined,
+          to: gmailTo.trim(),
+          subject: gmailSubject.trim() || '(No Subject)',
+          body: gmailBody.trim(),
+        });
+        setGmailApiStatus({
+          type: 'success',
+          message: `Gmail ড্রাফট সফলভাবে সংরক্ষিত হয়েছে! (Draft ID: ${res.id})`,
+        });
+      } else {
+        const recipients = parseEmailRecipients(gmailTo);
+        const targetList = recipients.length > 0 ? recipients : [gmailTo.trim()];
+        let lastId = '';
+        for (const toAddr of targetList) {
+          const res = await sendGmailMessage(activeToken, {
+            from: user?.email || undefined,
+            to: toAddr,
+            subject: gmailSubject.trim() || '(No Subject)',
+            body: gmailBody.trim(),
+          });
+          lastId = res.id;
+        }
+        setGmailApiStatus({
+          type: 'success',
+          message: `সরাসরি Gmail সফলভাবে পাঠানো হয়েছে → ${targetList.join(', ')} (ID: ${lastId})`,
+        });
+      }
+      setConfirmGmailMode(null);
+    } catch (err: any) {
+      const msg = err?.message || 'Gmail প্রেরণে ত্রুটি হয়েছে।';
+      if (msg.includes('401') || msg.includes('403')) {
+        disconnectGmail();
+      }
+      setGmailApiStatus({ type: 'error', message: msg });
+      setConfirmGmailMode(null);
+    } finally {
+      setIsSendingGmail(false);
+    }
   };
 
   // Build WhatsApp send URL
@@ -820,6 +972,523 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
                     </a>
                   </div>
                 </div>
+
+                {/* 8. Hotel Al Sheikh Farid (PWA) */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-amber-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-600 to-orange-700 text-white flex items-center justify-center shadow-md shadow-amber-600/30">
+                        <Utensils className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold">
+                        Food Order & Delivery PWA
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>হোটেল আল শেখ ফরিদ</span>
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      প্রোপাইটার: মো: আব্দুল বারিক শেখ। রেলওয়ে স্টেশন এলাকার সেরা ঘরোয়া ও সুস্বাদু খাবার, অনলাইন মেনু, অর্ডার, বিকাশ/নগদ পেমেন্ট ও টেবিল বুকিং।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        miniBrowser.openBrowser('https://1-lac-gamma.vercel.app/', 'web');
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>মিনি ব্রাউজারে চালান</span>
+                    </button>
+                    <a
+                      href="https://1-lac-gamma.vercel.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors"
+                      title="নতুন ট্যাবে হোটেল আল শেখ ফরিদ খুলুন"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* 9. Shurukkha Hub Dashboard (Iframe) */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-emerald-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white flex items-center justify-center shadow-md shadow-emerald-600/30">
+                        <ShieldCheck className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+                        Emergency & SOS Hub
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>সুরক্ষা হাব ড্যাশবোর্ড</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      নাগরিক সুরক্ষা, ইমার্জেন্সি SOS হেল্পলাইন ট্র্যাকিং ও সুরক্ষা কমান্ড সেন্টার ড্যাশবোর্ড। সরাসরি অ্যাপের ভেতর সুরক্ষিত আইফ্রেমে লোড করুন।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        if (onOpenShurukkhaHub) {
+                          onOpenShurukkhaHub();
+                        } else {
+                          miniBrowser.openBrowser('https://shurukkha-hub-gamma.vercel.app/dashboard', 'web');
+                        }
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>আইফ্রেমে লোড করুন</span>
+                    </button>
+                    <a
+                      href="https://shurukkha-hub-gamma.vercel.app/dashboard"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors"
+                      title="নতুন ট্যাবে সুরক্ষা হাব খুলুন"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* 10. Companion AI Studio Applet */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-purple-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-700 text-white flex items-center justify-center shadow-md shadow-purple-600/30">
+                        <Cpu className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold">
+                        Applet Link
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>কানেক্টেড এআই স্টুডিও অ্যাপলেট</span>
+                      <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed font-mono text-[11px] break-all bg-stone-100 dark:bg-stone-900 p-1.5 rounded-lg border border-stone-200/80 dark:border-stone-800">
+                      ID: 3850c68c-aab6-4e83-85ee-e2c2a3b05eb4
+                    </p>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      সহযোগী গুগল এআই স্টুডিও প্রজেক্ট। আইডি কপি করুন অথবা চ্যাটে লিংক করে নতুন ফিচার বা কানেকশন কনফিগার করুন।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText('3850c68c-aab6-4e83-85ee-e2c2a3b05eb4');
+                        setCopiedId('applet-3850c68c');
+                        setTimeout(() => setCopiedId(null), 2500);
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      {copiedId === 'applet-3850c68c' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedId === 'applet-3850c68c' ? 'আইডি কপি হয়েছে!' : 'অ্যাপলেট আইডি কপি'}</span>
+                    </button>
+                    {onSendToChat && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onSendToChat('কানেক্টেড এআই স্টুডিও অ্যাপলেট (ID: 3850c68c-aab6-4e83-85ee-e2c2a3b05eb4) এর সাথে সংযোগ ও ইন্টিগ্রেশন নির্দেশনা দিন।');
+                        }}
+                        className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors cursor-pointer"
+                        title="চ্যাটে ইন্টিগ্রেশন নির্দেশ পাঠান"
+                      >
+                        <Send className="w-4 h-4 text-purple-500" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 11. Sheikh Farid Portfolio PWA & Projects (Iframe) */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-sky-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-600 via-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-sky-600/30">
+                        <Briefcase className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold">
+                        Portfolio PWA #projects
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>Sheikh Farid — Portfolio PWA</span>
+                      <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      শেখ ফরিদের ফুল-স্ট্যাক ও মোবাইল ডেভেলপার পোর্টফোলিও PWA, ইন্টারঅ্যাক্টিভ প্রজেক্ট শোকেস (#projects), অফলাইন ক্যাশিং ও অ্যান্ড্রয়েড ওয়েবভিউ ইন্টিগ্রেশন।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        if (onOpenPortfolioPwa) {
+                          onOpenPortfolioPwa();
+                        } else {
+                          miniBrowser.openBrowser('https://portfolio-pwa-azure.vercel.app/#projects', 'web');
+                        }
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>আইফ্রেমে লোড করুন</span>
+                    </button>
+                    <a
+                      href="https://portfolio-pwa-azure.vercel.app/#projects"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors"
+                      title="নতুন ট্যাবে Portfolio PWA (#projects) খুলুন"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* 12. OnionShield — OmniSafe Privacy Browser (Iframe Proxy) */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-violet-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-violet-600/30">
+                        <ShieldAlert className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold">
+                        Privacy Portal &amp; APK
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>OnionShield (OmniSafe Browser)</span>
+                      <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      প্রাইভেট সার্চ (DuckDuckGo/Brave), URL ট্র্যাকার স্ট্রিপার, WebRTC ও ফিঙ্গারপ্রিন্ট অডিট এবং Android APK ডাউনলোড পোর্টাল।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        if (onOpenOmniSafeBrowser) {
+                          onOpenOmniSafeBrowser();
+                        } else {
+                          miniBrowser.openBrowser('https://omnisafe-browser.vercel.app/', 'web');
+                        }
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>আইফ্রেমে লোড করুন</span>
+                    </button>
+                    <a
+                      href="https://omnisafe-browser.vercel.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors"
+                      title="নতুন ট্যাবে OnionShield খুলুন"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* 13. Stripe & Gmail Payment Gateway Hub (Iframe) */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-indigo-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 via-violet-600 to-emerald-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/30">
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold">
+                        Stripe &amp; Gmail Hub
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>PaymentHub (Stripe &amp; Gmail)</span>
+                      <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      সেফ Stripe টেস্টিং প্যানেল, পেমেন্ট সিমুলেটর, সাবস্ক্রিপশন ম্যানেজার, ওয়েবহুক ইন্সপেক্টর ও জিমেইল রিসিট ডিসপ্যাচার।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        if (onOpenPaymentGatewayHub) {
+                          onOpenPaymentGatewayHub();
+                        } else {
+                          miniBrowser.openBrowser('https://stripe-gmail-payment-gateway-hub.vercel.app/', 'web');
+                        }
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-emerald-600 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>আইফ্রেমে লোড করুন</span>
+                    </button>
+                    <a
+                      href="https://stripe-gmail-payment-gateway-hub.vercel.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors"
+                      title="নতুন ট্যাবে PaymentHub খুলুন"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* 14. Universal Video & Audio Downloader (Iframe) */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-rose-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-600 via-pink-600 to-orange-600 text-white flex items-center justify-center shadow-md shadow-rose-600/30">
+                        <Download className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold">
+                        MP3 &amp; HD MP4
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>Universal Video &amp; Audio Downloader</span>
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      YouTube, Facebook ও Instagram থেকে MP3 ও HD MP4 ডাউনলোড, ব্যাচ URL কিউ, SD কার্ড স্টোরেজ ও JSON/CSV হিস্ট্রি ব্যাকআপ।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        if (onOpenVideoAudioDownloader) {
+                          onOpenVideoAudioDownloader();
+                        } else {
+                          miniBrowser.openBrowser('https://rubel-video-audio-downloader.ai.studio/', 'web');
+                        }
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-orange-600 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>আইফ্রেমে লোড করুন</span>
+                    </button>
+                    <a
+                      href="https://rubel-video-audio-downloader.ai.studio/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors"
+                      title="নতুন ট্যাবে Downloader খুলুন"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* 15. PayHub Gateway & Gmail Disbursement PWA (Iframe) */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-teal-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-600 via-emerald-600 to-cyan-600 text-white flex items-center justify-center shadow-md shadow-teal-600/30">
+                        <Wallet className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-500/10 text-teal-600 dark:text-teal-400 font-bold">
+                        bKash / Nagad / Stripe
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>PayHub Disbursement PWA</span>
+                      <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      Stripe, bKash ও Nagad B2C পে-আউট ও ডিসবার্সমেন্ট সিস্টেম, অটোমেটেড Gmail API রিসিট ও এন্টারপ্রাইজ ট্রানজ্যাকশন লেজার।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        if (onOpenPayHubDisbursement) {
+                          onOpenPayHubDisbursement();
+                        } else {
+                          miniBrowser.openBrowser('https://pay-hub-gateway-gmail-disbursement.vercel.app/', 'web');
+                        }
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-teal-600 via-emerald-600 to-cyan-600 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>আইফ্রেমে লোড করুন</span>
+                    </button>
+                    <a
+                      href="https://pay-hub-gateway-gmail-disbursement.vercel.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors"
+                      title="নতুন ট্যাবে PayHub Disbursement খুলুন"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* 16. UAE & Dubai Visa AI Hub (Iframe) */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-amber-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 via-sky-600 to-blue-700 text-white flex items-center justify-center shadow-md shadow-amber-500/30">
+                        <Plane className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold">
+                        Passport OCR &amp; AI
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>UAE &amp; Dubai Visa AI Hub</span>
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      দুবাই ও UAE ভিসা ডকুমেন্ট অডিটর, পাসপোর্ট OCR অ্যানালাইজার, ফটো ভ্যালিডেটর, এলিজিবিলিটি ক্যালকুলেটর ও এজেন্সি ম্যানেজমেন্ট প্ল্যাটফর্ম।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        if (onOpenUaeVisaHub) {
+                          onOpenUaeVisaHub();
+                        } else {
+                          miniBrowser.openBrowser('https://uae-dubai-visa-ai-hub-e981.vercel.app/', 'web');
+                        }
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-sky-600 to-blue-700 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>আইফ্রেমে লোড করুন</span>
+                    </button>
+                    <a
+                      href="https://uae-dubai-visa-ai-hub-e981.vercel.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors"
+                      title="নতুন ট্যাবে UAE & Dubai Visa AI Hub খুলুন"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* 17. APK Editor & Studio (Iframe) */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-lime-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-lime-500 via-emerald-600 to-cyan-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/30">
+                        <Package className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-lime-500/10 text-lime-600 dark:text-lime-400 font-bold">
+                        Smali / Keystore / APK
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>APK Editor &amp; Studio</span>
+                      <span className="w-2 h-2 rounded-full bg-lime-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      APK ডিকম্পাইলার, Smali ও XML এডিটর, প্রোডাকশন Keystore সাইনিং, QR কোড ফোন ইনস্টলার, PWA-to-APK বিল্ডার ও জিমেইল এক্সপোর্ট।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        if (onOpenApkEditorStudio) {
+                          onOpenApkEditorStudio();
+                        } else {
+                          miniBrowser.openBrowser('https://apk-editor-studio-enbz.vercel.app/', 'web');
+                        }
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-lime-500 via-emerald-600 to-cyan-600 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>আইফ্রেমে লোড করুন</span>
+                    </button>
+                    <a
+                      href="https://apk-editor-studio-enbz.vercel.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors"
+                      title="নতুন ট্যাবে APK Editor & Studio খুলুন"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* 18. Pulse SMS (Proxied Iframe) */}
+                <div className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/60 hover:border-blue-500/40 transition-all flex flex-col justify-between gap-4 group">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 via-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/30">
+                        <MessagesSquare className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold">
+                        SMS / OTP / AI
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <span>Pulse SMS — ওয়েব মেসেজিং</span>
+                      <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                      কম্পিউটার থেকে রিয়েল-টাইম এসএমএস পাঠানো, দ্রুত ওটিপি কপি, Android ও Web সিঙ্ক এবং Google Gemini AI স্প্যাম প্রটেকশন।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        if (onOpenPulseSms) {
+                          onOpenPulseSms();
+                        } else {
+                          miniBrowser.openBrowser('https://pulse-sms-2oc5.vercel.app/?source=pwa', 'web');
+                        }
+                      }}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600 hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>আইফ্রেমে লোড করুন</span>
+                    </button>
+                    <a
+                      href="https://pulse-sms-2oc5.vercel.app/?source=pwa"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 transition-colors"
+                      title="নতুন ট্যাবে Pulse SMS খুলুন"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -856,6 +1525,64 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
                   </p>
                 </div>
               </div>
+
+              {/* Direct Gmail API Connection & Status */}
+              <div className="p-3.5 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/90 dark:bg-stone-950/60 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    isGmailConnected
+                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                  }`}>
+                    {isGmailConnected ? <ShieldCheck className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-stone-800 dark:text-stone-200 truncate">
+                      {isGmailConnected
+                        ? `সংযুক্ত Gmail: ${user?.email || 'Google Account'}`
+                        : 'অ্যাপ থেকে সরাসরি Gmail পাঠাতে Google সাইন ইন করুন'}
+                    </p>
+                    <p className="text-[11px] text-stone-500 dark:text-stone-400 truncate">
+                      {isGmailConnected
+                        ? 'এখন নিচের "সরাসরি Gmail পাঠান" বাটনে ক্লিক করে সরাসরি পাঠাতে পারবেন।'
+                        : 'একাধিক প্রাপক কমা (,) দিয়ে লিখলে সবার কাছে স্বয়ংক্রিয়ভাবে চলে যাবে।'}
+                    </p>
+                  </div>
+                </div>
+
+                {isGmailConnected ? (
+                  <button
+                    type="button"
+                    onClick={handleConnectGmail}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-semibold cursor-pointer"
+                  >
+                    সংযুক্ত ✓
+                  </button>
+                ) : (
+                  <GoogleSignInButton
+                    onClick={handleConnectGmail}
+                    isLoading={isConnectingGmail}
+                    label="Sign in with Google"
+                  />
+                )}
+              </div>
+
+              {gmailApiStatus && (
+                <div
+                  className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+                    gmailApiStatus.type === 'success'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                      : 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                  }`}
+                >
+                  {gmailApiStatus.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                  )}
+                  <span>{gmailApiStatus.message}</span>
+                </div>
+              )}
 
               {/* Quick Template Buttons */}
               <div className="space-y-2">
@@ -902,10 +1629,10 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                    প্রাপকের ইমেইল (To):
+                    প্রাপকের ইমেইল (To — কমা দিয়ে একাধিক ইমেইল দিতে পারেন):
                   </label>
                   <input
-                    type="email"
+                    type="text"
                     value={gmailTo}
                     onChange={(e) => setGmailTo(e.target.value)}
                     placeholder="example@gmail.com, partner@company.com..."
@@ -940,16 +1667,36 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
                 </div>
 
                 {/* Dispatch Buttons */}
-                <div className="flex flex-wrap items-center gap-3 pt-2">
+                <div className="flex flex-wrap items-center gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleRequestDirectGmail('send')}
+                    disabled={isSendingGmail || isConnectingGmail}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-emerald-600 hover:brightness-110 text-white font-bold text-xs sm:text-sm shadow-lg shadow-rose-600/25 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isSendingGmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    <span>অ্যাপ থেকে সরাসরি Gmail পাঠান</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRequestDirectGmail('draft')}
+                    disabled={isSendingGmail || isConnectingGmail}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-800 font-semibold text-xs sm:text-sm transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Gmail ড্রাফট সেভ</span>
+                  </button>
+
                   <a
                     href={buildGmailComposeUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-rose-600/30 transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-750 text-stone-800 dark:text-stone-200 font-semibold text-xs sm:text-sm transition-colors"
                   >
-                    <Mail className="w-4 h-4" />
-                    <span>Gmail এ সরাসরি খুলুন ও পাঠান</span>
-                    <ArrowUpRight className="w-4 h-4" />
+                    <Mail className="w-4 h-4 text-rose-500" />
+                    <span>Gmail ওয়েবে খুলুন</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
                   </a>
 
                   <a
@@ -1202,20 +1949,37 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
                         </button>
                       </div>
 
-                      {onSendToChat && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onClose();
-                            onSendToChat(`শেখ ফরিদের GitHub প্রজেক্ট "${repo.name}" (${repo.html_url}) এর কোড আর্কিটেকচার, ফিচার ও উন্নয়ন পরিকল্পনা বিশদভাবে বিশ্লেষণ করুন।`);
-                          }}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-                          title="এআই সহকারীর সাথে এই প্রজেক্ট নিয়ে কাজ শুরু করুন"
-                        >
-                          <Sparkles className="w-3 h-3" />
-                          <span>চ্যাটে কাজ করুন</span>
-                        </button>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {onOpenGitHubBusinessHub && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onOpenGitHubBusinessHub(repo);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+                            title="এই প্রজেক্টের বিজনেস আইডিয়া, SMS ও অটো-Gmail তৈরি করুন"
+                          >
+                            <Rocket className="w-3 h-3" />
+                            <span>বিজনেস ও অটো-Gmail</span>
+                          </button>
+                        )}
+
+                        {onSendToChat && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onClose();
+                              onSendToChat(`শেখ ফরিদের GitHub প্রজেক্ট "${repo.name}" (${repo.html_url}) এর কোড আর্কিটেকচার, ফিচার ও উন্নয়ন পরিকল্পনা বিশদভাবে বিশ্লেষণ করুন।`);
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                            title="এআই সহকারীর সাথে এই প্রজেক্ট নিয়ে কাজ শুরু করুন"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>চ্যাটে কাজ</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1598,6 +2362,23 @@ export const UniversalAppsConnectModal: React.FC<UniversalAppsConnectModalProps>
             </div>
           )}
         </div>
+
+        <GmailConfirmModal
+          isOpen={confirmGmailMode !== null}
+          mode={confirmGmailMode || 'send'}
+          senderEmail={user?.email}
+          isExecuting={isSendingGmail}
+          items={(confirmGmailMode === 'send' && parseEmailRecipients(gmailTo).length > 0
+            ? parseEmailRecipients(gmailTo)
+            : [gmailTo.trim()]
+          ).map((toAddr) => ({
+            to: toAddr,
+            subject: gmailSubject.trim() || '(No Subject)',
+            bodyPreview: gmailBody.trim(),
+          }))}
+          onConfirm={handleConfirmDirectGmail}
+          onCancel={() => setConfirmGmailMode(null)}
+        />
       </div>
     </div>
   );

@@ -35,19 +35,25 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // CRITICAL: Initialize Firestore with forced long polling and auto-detect disabled
 // This prevents the SDK from probing WebSockets and waiting 10s before falling back.
+const firestoreDatabaseId = (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId;
 let firestoreDb: ReturnType<typeof getFirestore>;
 try {
-  firestoreDb = initializeFirestore(
-    app,
-    {
-      experimentalForceLongPolling: true,
-      experimentalAutoDetectLongPolling: false,
-    },
-    firebaseConfig.firestoreDatabaseId
-  );
+  firestoreDb = firestoreDatabaseId
+    ? initializeFirestore(
+        app,
+        {
+          experimentalForceLongPolling: true,
+          experimentalAutoDetectLongPolling: false,
+        },
+        firestoreDatabaseId
+      )
+    : initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        experimentalAutoDetectLongPolling: false,
+      });
 } catch {
   try {
-    firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+    firestoreDb = firestoreDatabaseId ? getFirestore(app, firestoreDatabaseId) : getFirestore(app);
   } catch {
     firestoreDb = getFirestore(app);
   }
@@ -76,11 +82,49 @@ googleDriveProvider.setCustomParameters({
   access_type: 'offline',
 });
 
+// YouTube Data API Provider
+export const YOUTUBE_SCOPES = [
+  'https://www.googleapis.com/auth/youtube.readonly',
+];
+
+export const googleYouTubeProvider = new GoogleAuthProvider();
+YOUTUBE_SCOPES.forEach((scope) => {
+  googleYouTubeProvider.addScope(scope);
+});
+googleYouTubeProvider.setCustomParameters({
+  prompt: 'consent',
+  access_type: 'offline',
+});
+
+// Gmail API Provider (Direct Send & Draft Composition)
+export const GMAIL_SCOPES = [
+  'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/gmail.compose',
+];
+
+export const googleGmailProvider = new GoogleAuthProvider();
+GMAIL_SCOPES.forEach((scope) => {
+  googleGmailProvider.addScope(scope);
+});
+googleGmailProvider.setCustomParameters({
+  prompt: 'consent',
+  access_type: 'offline',
+});
+
+// Combined Workspace & Google API Scopes configured for this application
+export const SCOPES = [
+  ...DRIVE_SCOPES,
+  ...YOUTUBE_SCOPES,
+  ...GMAIL_SCOPES,
+];
+
 // Alias for backwards compatibility
 export const googleProvider = googleAuthProvider;
 
-// MANDATORY per SKILL.md: In-memory cache for OAuth access token (NO localStorage / sessionStorage)
+// MANDATORY per SKILL.md: In-memory cache for OAuth access tokens (NO localStorage / sessionStorage)
 let cachedAccessToken: string | null = null;
+let cachedYouTubeToken: string | null = null;
+let cachedGmailToken: string | null = null;
 
 export function getCachedAccessToken(): string | null {
   return cachedAccessToken;
@@ -88,6 +132,22 @@ export function getCachedAccessToken(): string | null {
 
 export function setCachedAccessToken(token: string | null): void {
   cachedAccessToken = token;
+}
+
+export function getCachedYouTubeToken(): string | null {
+  return cachedYouTubeToken || cachedAccessToken;
+}
+
+export function setCachedYouTubeToken(token: string | null): void {
+  cachedYouTubeToken = token;
+}
+
+export function getCachedGmailToken(): string | null {
+  return cachedGmailToken;
+}
+
+export function setCachedGmailToken(token: string | null): void {
+  cachedGmailToken = token;
 }
 
 // Standard Firestore Error Handling conforming strictly to Firebase Skill requirements
@@ -173,11 +233,14 @@ export function formatAuthErrorMessage(error: any): string {
   if (code === 'auth/cancelled-popup-request') {
     return 'পূর্ববর্তী লগইন রিকোয়েস্ট বাতিল হয়েছে। অনুগ্রহ করে কয়েক সেকেন্ড পর আবার চেষ্টা করুন।';
   }
-  if (code === 'auth/network-request-failed') {
-    return 'ইন্টারনেট বা নেটওয়ার্ক সংযোগ ব্যর্থ হয়েছে। আপনার ইন্টারনেট সংযোগ পরীক্ষা করে পুনরায় চেষ্টা করুন।';
+  if (code === 'auth/network-request-failed' || message.includes('network-request-failed')) {
+    return 'নেটওয়ার্ক বা গুগল অথেন্টিকেশন সংযোগ ব্যর্থ হয়েছে। আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন, AdBlocker / Brave Shield / VPN থাকলে সাময়িকভাবে বন্ধ করুন অথবা অ্যাপটি সরাসরি Chrome ব্রাউজারে খুলে পুনরায় চেষ্টা করুন।';
   }
   if (code === 'auth/unauthorized-domain') {
     return 'এই ডোমেইনটি Firebase অনুমোদিত তালিকায় নেই।';
+  }
+  if (message.includes('disallowed_useragent') || message.includes('403') || code === 'auth/operation-not-supported-in-this-environment') {
+    return 'গুগল সিকিউরিটি এরর (403 disallowed_useragent): ইন-অ্যাপ ওয়েবভিউ থেকে গুগল লগইন ব্লক করা হয়েছে। অনুগ্রহ করে লিংকটি সরাসরি Chrome বা Safari ব্রাউজারে খুলুন।';
   }
   if (message.includes('state') || message.includes('missing')) {
     return 'OAuth সংযোগ ব্যর্থ (Missing state parameter)। ব্রাউজারের থার্ড-পার্টি কুকিজ বা ট্র্যাকিং শিল্ড (যেমন Brave Shields, AdBlock) সাময়িকভাবে নিষ্ক্রিয় করে পুনরায় চেষ্টা করুন।';
@@ -185,9 +248,43 @@ export function formatAuthErrorMessage(error: any): string {
   return error?.message || 'গুগল সংযোগ স্থাপন করা যায়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।';
 }
 
-export async function signInWithGoogle(withDriveScopes = false): Promise<{ user: User; accessToken: string | null }> {
+export type OAuthScopeTarget = 'standard' | 'drive' | 'youtube' | 'gmail';
+
+export class AuthActionError extends Error {
+  code: string;
+  isUserCancelled: boolean;
+  isPopupBlocked: boolean;
+  isNetworkError: boolean;
+
+  constructor(message: string, code: string) {
+    super(message);
+    this.name = 'AuthActionError';
+    this.code = code;
+    this.isUserCancelled = code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request';
+    this.isPopupBlocked = code === 'auth/popup-blocked';
+    this.isNetworkError = code === 'auth/network-request-failed';
+  }
+}
+
+export async function signInWithGoogle(
+  scopeTarget: OAuthScopeTarget | boolean = 'standard'
+): Promise<{ user: User; accessToken: string | null }> {
   try {
-    const provider = withDriveScopes ? googleDriveProvider : googleAuthProvider;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      const offlineMsg = formatAuthErrorMessage({ code: 'auth/network-request-failed' });
+      console.warn('Google sign-in skipped: browser appears offline (auth/network-request-failed).');
+      throw new AuthActionError(offlineMsg, 'auth/network-request-failed');
+    }
+
+    let provider = googleAuthProvider;
+    if (scopeTarget === true || scopeTarget === 'drive') {
+      provider = googleDriveProvider;
+    } else if (scopeTarget === 'youtube') {
+      provider = googleYouTubeProvider;
+    } else if (scopeTarget === 'gmail') {
+      provider = googleGmailProvider;
+    }
+
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
     
@@ -195,11 +292,15 @@ export async function signInWithGoogle(withDriveScopes = false): Promise<{ user:
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (credential?.accessToken) {
       cachedAccessToken = credential.accessToken;
+      if (scopeTarget === 'youtube') {
+        cachedYouTubeToken = credential.accessToken;
+      } else if (scopeTarget === 'gmail') {
+        cachedGmailToken = credential.accessToken;
+      }
     }
     
     // Sync user profile to Firestore
     const userRef = doc(db, 'users', user.uid);
-    const path = `users/${user.uid}`;
     try {
       const userDoc = await getDoc(userRef);
       const existingData = userDoc.exists() ? userDoc.data() : null;
@@ -227,8 +328,30 @@ export async function signInWithGoogle(withDriveScopes = false): Promise<{ user:
     
     return { user, accessToken: cachedAccessToken };
   } catch (err: unknown) {
-    console.error('Sign-in error:', err);
-    throw new Error(formatAuthErrorMessage(err));
+    if (err instanceof AuthActionError) {
+      throw err;
+    }
+
+    const code = (err as any)?.code || '';
+    const formattedMsg = formatAuthErrorMessage(err);
+
+    // Suppress console.error for expected user cancellation, popup blocking, or client/sandbox network blocks
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+      console.info('Google sign-in popup was closed or cancelled by user.');
+    } else if (code === 'auth/popup-blocked') {
+      console.warn('Google sign-in popup was blocked by browser. User should allow popups.');
+    } else if (
+      code === 'auth/network-request-failed' ||
+      code === 'auth/unauthorized-domain' ||
+      code === 'auth/operation-not-supported-in-this-environment' ||
+      code === 'auth/web-storage-unsupported'
+    ) {
+      console.warn(`Google sign-in interrupted (${code}):`, formattedMsg);
+    } else {
+      console.warn('Sign-in notice:', err);
+    }
+
+    throw new AuthActionError(formattedMsg, code);
   }
 }
 
@@ -247,8 +370,25 @@ export async function requestDriveAccessToken(): Promise<string> {
   return accessToken;
 }
 
+/**
+ * Ensures an active Gmail OAuth access token is available in memory.
+ * Prompts user via Sign in with Google popup with Gmail permissions if not cached.
+ */
+export async function requestGmailAccessToken(): Promise<string> {
+  if (cachedGmailToken) {
+    return cachedGmailToken;
+  }
+  const { accessToken } = await signInWithGoogle('gmail');
+  if (!accessToken) {
+    throw new Error('Gmail এক্সেস টোকেন পাওয়া যায়নি। অনুগ্রহ করে পপআপে পারমিশন দিন।');
+  }
+  return accessToken;
+}
+
 export async function signOutUser(): Promise<void> {
   cachedAccessToken = null;
+  cachedYouTubeToken = null;
+  cachedGmailToken = null;
   await firebaseSignOut(auth);
 }
 

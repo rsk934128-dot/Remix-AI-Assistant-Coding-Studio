@@ -4,6 +4,7 @@ import App from './App.tsx';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // In development, automatically unregister any stale service workers to ensure API requests reach Express
@@ -40,8 +41,10 @@ if (import.meta.env.DEV) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
-      <App />
-      <SpeedInsights />
+      <NotificationProvider>
+        <App />
+        <SpeedInsights />
+      </NotificationProvider>
     </AuthProvider>
   </StrictMode>,
 );

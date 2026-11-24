@@ -2,6 +2,15 @@ import { QuickPrompt } from '../types';
 
 export const QUICK_PROMPTS: QuickPrompt[] = [
   {
+    id: 'p-ai-picture-generator',
+    category: 'daily',
+    titleBn: 'AI ছবি তৈরি ও ডাউনলোড 🎨',
+    titleEn: 'AI Picture Generator & Download',
+    prompt: 'একটি সুন্দর ছবি তৈরি করো: কক্সবাজার সমুদ্র সৈকতে শান্ত সূর্যাস্ত এবং রঙিন কাঠের পালতোলা নৌকা, সিনেমাটিক লাইটিং, ফুল এইচডি।',
+    descriptionBn: 'কৃত্রিম বুদ্ধিমত্তা দিয়ে নিমেষেই ছবি তৈরি ও ডাউনলোড',
+    icon: 'Sparkles',
+  },
+  {
     id: 'p-apps-connect-all',
     category: 'daily',
     titleBn: 'সকল অ্যাপস ওপেন ও কানেক্ট',

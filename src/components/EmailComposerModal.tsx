@@ -21,9 +21,16 @@ import {
   ArrowLeft,
   Share2,
   BookOpen,
-  UserCheck
+  BookMarked,
+  UserCheck,
+  ShieldCheck
 } from 'lucide-react';
 import { callDirectGeminiStream, isDirectGeminiAvailable } from '../lib/directGemini';
+import { useAuth } from '../context/AuthContext';
+import { authenticatedFetch } from '../utils/apiAuth';
+import { sendGmailMessage, createGmailDraft, parseEmailRecipients } from '../lib/gmailService';
+import { GoogleSignInButton } from './GoogleSignInButton';
+import { GmailConfirmModal } from './GmailConfirmModal';
 
 export interface EmailComposerModalProps {
   isOpen: boolean;
@@ -33,6 +40,14 @@ export interface EmailComposerModalProps {
   initialBody?: string;
   initialLanguage?: 'bn' | 'en';
   onSendToChat?: (prompt: string) => void;
+  onOpenTemplatesLibrary?: () => void;
+  onSaveToTemplatesLibrary?: (draft: {
+    title?: string;
+    language: 'bn' | 'en';
+    subject: string;
+    body: string;
+    recipientHint?: string;
+  }) => void;
 }
 
 type EmailLanguage = 'bn' | 'en';
@@ -304,6 +319,8 @@ export const EmailComposerModal: React.FC<EmailComposerModalProps> = ({
   initialBody = '',
   initialLanguage = 'bn',
   onSendToChat,
+  onOpenTemplatesLibrary,
+  onSaveToTemplatesLibrary,
 }) => {
   // Main form state
   const [recipient, setRecipient] = useState(initialRecipient);
@@ -315,6 +332,8 @@ export const EmailComposerModal: React.FC<EmailComposerModalProps> = ({
   const [language, setLanguage] = useState<EmailLanguage>(initialLanguage);
   const [tone, setTone] = useState<EmailTone>('formal');
 
+  const { user, gmailAccessToken, isGmailConnected, signInWithGmail, disconnectGmail, authError, clearAuthError } = useAuth();
+
   // UI state
   const [copiedType, setCopiedType] = useState<string | null>(null);
   const [exportedFormat, setExportedFormat] = useState<string | null>(null);
@@ -323,8 +342,23 @@ export const EmailComposerModal: React.FC<EmailComposerModalProps> = ({
   const [showAiPromptBox, setShowAiPromptBox] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isConnectingGmail, setIsConnectingGmail] = useState(false);
+  const [confirmGmailMode, setConfirmGmailMode] = useState<'send' | 'draft' | null>(null);
+  const [isSendingGmail, setIsSendingGmail] = useState(false);
+  const [gmailSendSuccess, setGmailSendSuccess] = useState<{
+    id: string;
+    mode: 'send' | 'draft';
+    to: string;
+  } | null>(null);
 
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (isOpen && authError) {
+      setErrorMessage(authError);
+      clearAuthError();
+    }
+  }, [isOpen, authError, clearAuthError]);
 
   // Restore saved draft or initial props on mount / modal open
   useEffect(() => {
@@ -607,15 +641,14 @@ export const EmailComposerModal: React.FC<EmailComposerModalProps> = ({
     }
   };
 
-  // 1-Click Launch Email Clients
-  const handleOpenInGmail = () => {
+  // 1-Click Direct Gmail Web URL & Default Mailto
+  const buildGmailWebUrl = () => {
     const encTo = encodeURIComponent(recipient.trim());
     const encSu = encodeURIComponent(subject.trim());
     const encBody = encodeURIComponent(body.trim());
     const encCc = cc.trim() ? `&cc=${encodeURIComponent(cc.trim())}` : '';
     const encBcc = bcc.trim() ? `&bcc=${encodeURIComponent(bcc.trim())}` : '';
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encTo}&su=${encSu}&body=${encBody}${encCc}${encBcc}`;
-    window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encTo}&su=${encSu}&body=${encBody}${encCc}${encBcc}`;
   };
 
   const handleOpenInDefaultClient = () => {
@@ -625,6 +658,127 @@ export const EmailComposerModal: React.FC<EmailComposerModalProps> = ({
     const encCc = cc.trim() ? `&cc=${encodeURIComponent(cc.trim())}` : '';
     const mailtoUrl = `mailto:${encTo}?subject=${encSu}&body=${encBody}${encCc}`;
     window.location.href = mailtoUrl;
+  };
+
+  // Connect Gmail Account via Google Sign-In
+  const handleConnectGmail = async () => {
+    setIsConnectingGmail(true);
+    setErrorMessage(null);
+    try {
+      const token = await signInWithGmail();
+      if (!token) {
+        setErrorMessage('Gmail সংযোগ সম্পূর্ণ হয়নি। অনুগ্রহ করে পপআপে অনুমতি দিন।');
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Gmail সংযোগ করতে সমস্যা হয়েছে।');
+    } finally {
+      setIsConnectingGmail(false);
+    }
+  };
+
+  // Initiate Direct Gmail Send or Draft with mandatory explicit confirmation modal
+  const handleRequestGmailAction = async (targetMode: 'send' | 'draft') => {
+    setErrorMessage(null);
+    setGmailSendSuccess(null);
+
+    if (targetMode === 'send') {
+      const parsedRecipients = parseEmailRecipients(recipient);
+      if (parsedRecipients.length === 0) {
+        setErrorMessage(
+          language === 'bn'
+            ? 'অনুগ্রহ করে প্রাপকের সঠিক ইমেইল ঠিকানা (To) লিখুন (যেমন: client@gmail.com)।'
+            : 'Please enter a valid recipient email address in the To field.'
+        );
+        return;
+      }
+    }
+
+    if (!subject.trim() && !body.trim()) {
+      setErrorMessage(
+        language === 'bn'
+          ? 'পাঠানোর আগে ইমেইলের বিষয় অথবা মূল বার্তা লিখুন।'
+          : 'Please enter an email subject or body before sending.'
+      );
+      return;
+    }
+
+    if (!gmailAccessToken) {
+      setIsConnectingGmail(true);
+      try {
+        const token = await signInWithGmail();
+        if (!token) {
+          setErrorMessage('সরাসরি Gmail পাঠাতে অনুগ্রহ করে আগে Google দিয়ে সাইন ইন করুন।');
+          return;
+        }
+      } finally {
+        setIsConnectingGmail(false);
+      }
+    }
+
+    setConfirmGmailMode(targetMode);
+  };
+
+  const handleConfirmGmailDispatch = async () => {
+    if (!confirmGmailMode) return;
+    let activeToken = gmailAccessToken;
+    if (!activeToken) {
+      activeToken = await signInWithGmail();
+      if (!activeToken) {
+        setConfirmGmailMode(null);
+        return;
+      }
+    }
+
+    setIsSendingGmail(true);
+    setErrorMessage(null);
+
+    try {
+      if (confirmGmailMode === 'draft') {
+        const draftRes = await createGmailDraft(activeToken, {
+          from: user?.email || undefined,
+          to: recipient.trim(),
+          cc: cc.trim() || undefined,
+          bcc: bcc.trim() || undefined,
+          subject: subject.trim() || '(No Subject)',
+          body: body.trim(),
+        });
+        setGmailSendSuccess({
+          id: draftRes.id,
+          mode: 'draft',
+          to: recipient.trim() || 'ড্রাফট',
+        });
+      } else {
+        const recipients = parseEmailRecipients(recipient);
+        const targetList = recipients.length > 0 ? recipients : [recipient.trim()];
+        let lastMessageId = '';
+        for (const toAddr of targetList) {
+          const sendRes = await sendGmailMessage(activeToken, {
+            from: user?.email || undefined,
+            to: toAddr,
+            cc: cc.trim() || undefined,
+            bcc: bcc.trim() || undefined,
+            subject: subject.trim() || '(No Subject)',
+            body: body.trim(),
+          });
+          lastMessageId = sendRes.id;
+        }
+        setGmailSendSuccess({
+          id: lastMessageId,
+          mode: 'send',
+          to: targetList.join(', '),
+        });
+      }
+      setConfirmGmailMode(null);
+    } catch (err: any) {
+      const msg = err?.message || 'Gmail প্রেরণে ত্রুটি হয়েছে।';
+      if (msg.includes('401') || msg.includes('403')) {
+        disconnectGmail();
+      }
+      setErrorMessage(msg);
+      setConfirmGmailMode(null);
+    } finally {
+      setIsSendingGmail(false);
+    }
   };
 
   // AI Generation & Polish using Gemini
@@ -688,7 +842,7 @@ ${body}
         });
       } else {
         // Server proxy call
-        const resp = await fetch('/api/gemini/stream', {
+        const resp = await authenticatedFetch('/api/chat/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -904,6 +1058,18 @@ ${body}
                 </option>
               ))}
             </select>
+            {onOpenTemplatesLibrary && (
+              <button
+                type="button"
+                id="email-composer-open-library-btn"
+                onClick={onOpenTemplatesLibrary}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-bold text-xs shrink-0 transition-colors cursor-pointer"
+                title="কাস্টম ইমেইল টেমপ্লেট লাইব্রেরি খুলুন (Marketing, Collaboration, Follow-up)"
+              >
+                <BookMarked className="w-3.5 h-3.5" />
+                <span>লাইব্রেরি</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -933,6 +1099,26 @@ ${body}
           </div>
         )}
 
+        {gmailSendSuccess && (
+          <div className="mx-4 sm:mx-5 mt-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+            <div className="flex items-center gap-2 min-w-0">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="truncate">
+                {gmailSendSuccess.mode === 'draft'
+                  ? `Gmail ড্রাফট সফলভাবে সংরক্ষিত হয়েছে! (ID: ${gmailSendSuccess.id})`
+                  : `সরাসরি Gmail সফলভাবে পাঠানো হয়েছে → ${gmailSendSuccess.to} (ID: ${gmailSendSuccess.id})`}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGmailSendSuccess(null)}
+              className="p-1 rounded-lg hover:bg-emerald-200/50 dark:hover:bg-emerald-900 cursor-pointer shrink-0"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {errorMessage && (
           <div className="mx-4 sm:mx-5 mt-3 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2 animate-in fade-in">
             <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
@@ -942,6 +1128,52 @@ ${body}
 
         {/* ===================== Scrollable Form Area ===================== */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 text-xs">
+          {/* Gmail API Direct Connection Banner */}
+          <div className="p-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/90 dark:bg-stone-950/60 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                isGmailConnected
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                  : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+              }`}>
+                {isGmailConnected ? <ShieldCheck className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-stone-800 dark:text-stone-200 text-xs truncate">
+                  {isGmailConnected
+                    ? `সরাসরি Gmail সংযুক্ত: ${user?.email || 'Google Account'}`
+                    : 'অ্যাপ থেকে সরাসরি Gmail পাঠাতে Google অ্যাকাউন্ট সংযুক্ত করুন'}
+                </p>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 truncate">
+                  {isGmailConnected
+                    ? 'এক ক্লিকে সরাসরি আপনার Gmail থেকে ইমেইল পাঠানো বা ড্রাফট সেভ করা যাবে।'
+                    : 'অনুমতি দিলে কোনো অতিরিক্ত অ্যাপ ছাড়াই সরাসরি ইমেইল ডেলিভারি হবে।'}
+                </p>
+              </div>
+            </div>
+
+            {isGmailConnected ? (
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold border border-emerald-300 dark:border-emerald-800">
+                  <CheckCircle2 className="w-3 h-3" />
+                  সংযুক্ত
+                </span>
+                <button
+                  type="button"
+                  onClick={handleConnectGmail}
+                  className="text-[11px] font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 underline cursor-pointer"
+                >
+                  অ্যাকাউন্ট বদলান
+                </button>
+              </div>
+            ) : (
+              <GoogleSignInButton
+                onClick={handleConnectGmail}
+                isLoading={isConnectingGmail}
+                label="Sign in with Google"
+              />
+            )}
+          </div>
           {/* Recipient (To) + CC/BCC Toggle */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -1261,6 +1493,28 @@ ${body}
               </button>
             )}
 
+            {/* Save current email to Templates Library */}
+            {onSaveToTemplatesLibrary && (subject.trim() || body.trim()) && (
+              <button
+                type="button"
+                id="email-composer-save-to-library-btn"
+                onClick={() =>
+                  onSaveToTemplatesLibrary({
+                    title: subject.trim() || 'কাস্টম ইমেইল টেমপ্লেট',
+                    language,
+                    subject: subject.trim(),
+                    body: body.trim(),
+                    recipientHint: recipient.trim() || undefined,
+                  })
+                }
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 font-semibold border border-amber-300 dark:border-amber-800 shadow-2xs transition-colors cursor-pointer"
+                title="এই ইমেইলটি পুনঃব্যবহারের জন্য টেমপ্লেট লাইব্রেরিতে সংরক্ষণ করুন"
+              >
+                <BookMarked className="w-3.5 h-3.5" />
+                <span>টেমপ্লেট সেভ</span>
+              </button>
+            )}
+
             {/* Send to chat for review */}
             {onSendToChat && (
               <button
@@ -1341,20 +1595,65 @@ ${body}
               <span>মেইল অ্যাপ</span>
             </button>
 
-            {/* Gmail Web 1-Click Launch */}
+            {/* Gmail Web Fallback Link */}
+            <a
+              id="email-open-gmail-web-btn"
+              href={buildGmailWebUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-750 text-stone-800 dark:text-stone-200 font-semibold border border-stone-200 dark:border-stone-700 shadow-2xs transition-colors"
+              title="Gmail ওয়েব কম্পোজ ট্যাবে খুলুন"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-rose-500" />
+              <span>Gmail ওয়েব</span>
+            </a>
+
+            {/* Save as Gmail Draft */}
+            <button
+              type="button"
+              id="email-save-gmail-draft-btn"
+              onClick={() => handleRequestGmailAction('draft')}
+              disabled={isSendingGmail || isConnectingGmail}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-semibold border border-amber-300 dark:border-amber-800 shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+              title="আপনার Gmail অ্যাকাউন্টে ড্রাফট হিসেবে সংরক্ষণ করুন"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Gmail ড্রাফট</span>
+            </button>
+
+            {/* Primary Direct Gmail API Send Button */}
             <button
               type="button"
               id="email-open-gmail-btn"
-              onClick={handleOpenInGmail}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold shadow-sm transition-all cursor-pointer active:scale-98"
-              title="সরাসরি Gmail কম্পোজ উইন্ডোতে প্রি-ফিল করে ওপেন করুন"
+              onClick={() => handleRequestGmailAction('send')}
+              disabled={isSendingGmail || isConnectingGmail}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 via-emerald-600 to-teal-600 hover:brightness-110 text-white font-bold shadow-sm transition-all cursor-pointer active:scale-98 disabled:opacity-50"
+              title="অ্যাপ থেকে সরাসরি আপনার Gmail অ্যাকাউন্টের মাধ্যমে পাঠান"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>Gmail-এ পাঠান</span>
+              {isSendingGmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              <span>সরাসরি Gmail পাঠান</span>
             </button>
           </div>
         </div>
       </div>
+
+      {/* Explicit Confirmation Dialog before sending or saving draft */}
+      <GmailConfirmModal
+        isOpen={confirmGmailMode !== null}
+        mode={confirmGmailMode || 'send'}
+        senderEmail={user?.email}
+        isExecuting={isSendingGmail}
+        items={(confirmGmailMode === 'send' && parseEmailRecipients(recipient).length > 0
+          ? parseEmailRecipients(recipient)
+          : [recipient.trim()]
+        ).map((toAddr) => ({
+          to: toAddr,
+          subject: subject.trim() || '(No Subject)',
+          bodyPreview: body.trim(),
+        }))}
+        onConfirm={handleConfirmGmailDispatch}
+        onCancel={() => setConfirmGmailMode(null)}
+      />
     </div>
   );
 };

@@ -22,14 +22,18 @@ export function useVoiceInput({
   const [audioLevel, setAudioLevel] = useState<number>(0);
   const [frequencyData, setFrequencyData] = useState<number[]>([]);
   const [interimText, setInterimText] = useState<string>('');
+  const [listeningDuration, setListeningDuration] = useState<number>(0);
 
   const recognitionRef = useRef<any>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const timerIntervalRef = useRef<any>(null);
   const isManuallyStoppedRef = useRef<boolean>(false);
   const currentLanguageRef = useRef<VoiceLanguage>(defaultLang);
   const basePrefixTextRef = useRef<string>('');
+  const accumulatedFinalTextRef = useRef<string>('');
+  const currentSessionFinalRef = useRef<string>('');
 
   // Keep ref in sync
   currentLanguageRef.current = language;
@@ -83,7 +87,11 @@ export function useVoiceInput({
     }
   };
 
-  const cleanupAudio = () => {
+  const cleanupAudio = useCallback(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
@@ -99,7 +107,8 @@ export function useVoiceInput({
     setAudioLevel(0);
     setFrequencyData([]);
     setInterimText('');
-  };
+    setListeningDuration(0);
+  }, []);
 
   const stopListening = useCallback(() => {
     isManuallyStoppedRef.current = true;
@@ -112,13 +121,20 @@ export function useVoiceInput({
     }
     cleanupAudio();
     setIsListening(false);
-  }, []);
+  }, [cleanupAudio]);
 
-  const startListening = useCallback(async (existingText: string = '') => {
+  const startListening = useCallback((existingText: string = '') => {
     setErrorMessage(null);
     isManuallyStoppedRef.current = false;
-    basePrefixTextRef.current = existingText ? existingText.trim() + ' ' : '';
+    basePrefixTextRef.current = existingText
+      ? /\s$/.test(existingText)
+        ? existingText
+        : existingText + ' '
+      : '';
+    accumulatedFinalTextRef.current = '';
+    currentSessionFinalRef.current = '';
     setInterimText('');
+    setListeningDuration(0);
 
     if (!isSupported) {
       setErrorMessage(
@@ -128,22 +144,7 @@ export function useVoiceInput({
       return;
     }
 
-    // Try optional audio analyzer (non-blocking)
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaStreamRef.current = stream;
-        setHasPermission(true);
-        setupAudioAnalyzer(stream);
-      }
-    } catch (err: any) {
-      console.warn('Non-blocking mic stream notice:', err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setHasPermission(false);
-      }
-    }
-
-    // Initialize Web Speech API SpeechRecognition
+    // Initialize Web Speech API SpeechRecognition synchronously to preserve user gesture activation
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     try {
       if (recognitionRef.current) {
@@ -162,32 +163,76 @@ export function useVoiceInput({
 
       recognition.onstart = () => {
         setIsListening(true);
+        setHasPermission(true);
         setErrorMessage(null);
+        if (!timerIntervalRef.current) {
+          timerIntervalRef.current = setInterval(() => {
+            setListeningDuration((prev) => prev + 1);
+          }, 1000);
+        }
+
+        // Start optional audio analyzer for visual frequency wave after recognition starts
+        if (!mediaStreamRef.current && navigator.mediaDevices?.getUserMedia) {
+          navigator.mediaDevices
+            .getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              },
+            })
+            .then((stream) => {
+              if (isManuallyStoppedRef.current) {
+                stream.getTracks().forEach((t) => t.stop());
+                return;
+              }
+              mediaStreamRef.current = stream;
+              setupAudioAnalyzer(stream);
+            })
+            .catch(() => {
+              // Visualizer is optional; keep Web Speech API running even if getUserMedia is unavailable
+            });
+        }
       };
 
       recognition.onerror = (event: any) => {
         console.warn('Speech recognition error:', event.error);
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          setHasPermission(false);
           setErrorMessage('মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। ব্রাউজার অ্যাড্রেসবারে তালা (Lock) আইকনে ক্লিক করে মাইক্রোফোন Allow করুন।');
           stopListening();
-        } else if (event.error === 'no-speech') {
-          // Normal pause in speaking, stay active
+        } else if (event.error === 'no-speech' || event.error === 'aborted') {
+          // Normal pause in speaking or intentional abort
         } else if (event.error === 'network') {
           setErrorMessage('ভয়েস রিকগনিশন সার্ভার নেটওয়ার্ক ত্রুটি। অনুগ্রহ করে ইন্টারনেট সংযোগ চেক করুন।');
         } else if (event.error === 'audio-capture') {
           setErrorMessage('কোনো মাইক্রোফোন ডিভাইস পাওয়া যায়নি। হেডফোন বা মাইক চেক করুন।');
           stopListening();
+        } else if (event.error === 'language-not-supported') {
+          setErrorMessage('নির্বাচিত ভাষাটি এই ব্রাউজারের ভয়েস রিকগনিশনে সমর্থিত নয়। ভাষা পরিবর্তন করে চেষ্টা করুন।');
         }
       };
 
       recognition.onend = () => {
+        // Accumulate final recognized text from the completed recognition slice
+        if (currentSessionFinalRef.current) {
+          accumulatedFinalTextRef.current += currentSessionFinalRef.current;
+          currentSessionFinalRef.current = '';
+        }
+
         if (!isManuallyStoppedRef.current && recognitionRef.current) {
-          try {
-            recognition.start();
-          } catch (e) {
-            setIsListening(false);
-            cleanupAudio();
-          }
+          setTimeout(() => {
+            if (!isManuallyStoppedRef.current && recognitionRef.current) {
+              try {
+                recognitionRef.current.lang = currentLanguageRef.current;
+                recognitionRef.current.start();
+              } catch (e) {
+                // If browser refuses re-start, update state
+                setIsListening(false);
+                cleanupAudio();
+              }
+            }
+          }, 150);
         } else {
           setIsListening(false);
           cleanupAudio();
@@ -195,24 +240,26 @@ export function useVoiceInput({
       };
 
       recognition.onresult = (event: any) => {
-        let finalTranscript = '';
-        let liveInterim = '';
+        let sessionFinal = '';
+        let sessionInterim = '';
 
         for (let i = 0; i < event.results.length; ++i) {
           const item = event.results[i];
           const chunk = item[0]?.transcript || '';
           if (item.isFinal) {
-            finalTranscript += chunk;
+            sessionFinal += chunk + ' ';
           } else {
-            liveInterim += chunk;
+            sessionInterim += chunk;
           }
         }
 
-        const recognizedSoFar = (finalTranscript + (liveInterim ? ' ' + liveInterim : '')).trim();
-        setInterimText(recognizedSoFar);
+        currentSessionFinalRef.current = sessionFinal;
+
+        const totalSpoken = (accumulatedFinalTextRef.current + sessionFinal + sessionInterim).trim();
+        setInterimText(totalSpoken);
 
         // Check for hands-free voice commands
-        const lower = recognizedSoFar.toLowerCase();
+        const lower = totalSpoken.toLowerCase();
         const sendCommandsBn = ['পাঠাও', 'সেন্ড করো', 'মেসেজ পাঠাও', 'পাঠিয়ে দাও', 'পাঠান'];
         const sendCommandsEn = ['send message', 'send', 'submit'];
         const clearCommands = ['মুছে ফেলো', 'ক্লিয়ার করো', 'clear all', 'clear input', 'মুছে দাও'];
@@ -223,6 +270,8 @@ export function useVoiceInput({
             onClearVoiceCommand();
           }
           basePrefixTextRef.current = '';
+          accumulatedFinalTextRef.current = '';
+          currentSessionFinalRef.current = '';
           setInterimText('');
           return;
         }
@@ -232,7 +281,7 @@ export function useVoiceInput({
         const hasSendEn = sendCommandsEn.some((cmd) => lower.endsWith(cmd) || lower === cmd);
 
         if (hasSendBn || hasSendEn) {
-          let cleanedText = recognizedSoFar;
+          let cleanedText = totalSpoken;
           [...sendCommandsBn, ...sendCommandsEn].forEach((cmd) => {
             const regex = new RegExp(`\\s*${cmd}\\s*$`, 'i');
             cleanedText = cleanedText.replace(regex, '');
@@ -248,11 +297,11 @@ export function useVoiceInput({
           return;
         }
 
-        // Regular continuous dictation update
-        if (recognizedSoFar) {
-          const fullUpdatedText = (basePrefixTextRef.current + recognizedSoFar).trim();
+        // Regular continuous dictation update to the input field
+        if (totalSpoken) {
+          const fullUpdatedText = (basePrefixTextRef.current + totalSpoken).trim();
           if (onTranscriptUpdate) {
-            onTranscriptUpdate(fullUpdatedText, Boolean(finalTranscript));
+            onTranscriptUpdate(fullUpdatedText, Boolean(sessionFinal));
           }
         }
       };
@@ -264,7 +313,7 @@ export function useVoiceInput({
       setIsListening(false);
       cleanupAudio();
     }
-  }, [isSupported, onTranscriptUpdate, onSendVoiceCommand, onClearVoiceCommand, stopListening]);
+  }, [isSupported, onTranscriptUpdate, onSendVoiceCommand, onClearVoiceCommand, stopListening, cleanupAudio]);
 
   const toggleListening = useCallback((existingText: string = '') => {
     if (isListening) {
@@ -315,5 +364,6 @@ export function useVoiceInput({
     audioLevel,
     frequencyData,
     interimText,
+    listeningDuration,
   };
 }

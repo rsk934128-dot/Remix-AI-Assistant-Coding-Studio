@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Cloud, CloudCheck, LogIn, LogOut, User as UserIcon, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Cloud, CloudCheck, LogIn, LogOut, User as UserIcon, RefreshCw, CheckCircle2, Youtube, ExternalLink } from 'lucide-react';
+import { openInExternalSystemBrowser } from '../utils/browserDetection';
 
 interface UserAuthButtonProps {
   onSyncAll?: () => Promise<void>;
@@ -9,7 +10,20 @@ interface UserAuthButtonProps {
 }
 
 export const UserAuthButton: React.FC<UserAuthButtonProps> = ({ onSyncAll, onOpenProfile, compact = false }) => {
-  const { user, loading, signIn, signOut, isSyncing, authError, clearAuthError } = useAuth();
+  const {
+    user,
+    loading,
+    signIn,
+    signOut,
+    isSyncing,
+    authError,
+    clearAuthError,
+    isYouTubeConnected,
+    youtubeUser,
+    signInWithYouTube,
+    isPopupBlocked,
+    clearPopupBlocked,
+  } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [syncedRecently, setSyncedRecently] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -46,6 +60,7 @@ export const UserAuthButton: React.FC<UserAuthButtonProps> = ({ onSyncAll, onOpe
           type="button"
           onClick={() => {
             clearAuthError();
+            clearPopupBlocked();
             signIn().catch(() => {});
           }}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 transition-colors shadow-xs cursor-pointer ${
@@ -58,14 +73,17 @@ export const UserAuthButton: React.FC<UserAuthButtonProps> = ({ onSyncAll, onOpe
         </button>
 
         {authError && (
-          <div className="absolute right-0 top-full mt-2 w-72 p-3 rounded-xl bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-800 shadow-xl z-50 text-xs space-y-2 animate-in fade-in">
+          <div className="absolute right-0 top-full mt-2 w-72 p-3.5 rounded-xl bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-800 shadow-xl z-50 text-xs space-y-2 animate-in fade-in">
             <div className="flex items-start justify-between gap-2">
               <span className="font-bold text-amber-800 dark:text-amber-300 text-[11px]">
-                লগইন নোটিফিকেশন
+                {isPopupBlocked ? 'পপ-আপ অনুমোদন প্রয়োজন' : 'লগইন নোটিফিকেশন'}
               </span>
               <button
                 type="button"
-                onClick={clearAuthError}
+                onClick={() => {
+                  clearAuthError();
+                  clearPopupBlocked();
+                }}
                 className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xs font-bold p-0.5 cursor-pointer"
               >
                 ✕
@@ -74,16 +92,49 @@ export const UserAuthButton: React.FC<UserAuthButtonProps> = ({ onSyncAll, onOpe
             <p className="text-[11px] text-stone-700 dark:text-stone-300 leading-relaxed">
               {authError}
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                clearAuthError();
-                signIn().catch(() => {});
-              }}
-              className="w-full py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
-            >
-              পুনরায় চেষ্টা করুন
-            </button>
+            {isPopupBlocked && (
+              <p className="text-[10px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg">
+                💡 টিপস: ব্রাউজার অ্যাড্রেসবারে থাকা 🔒 বা 🚫 আইকনে ক্লিক করে "Always allow pop-ups" নির্বাচন করুন।
+              </p>
+            )}
+            {authError.includes('disallowed_useragent') ||
+            authError.includes('ওয়েবভিউ') ||
+            authError.includes('নেটওয়ার্ক') ||
+            authError.includes('ইন্টারনেট') ? (
+              <div className="space-y-1.5">
+                <button
+                  type="button"
+                  onClick={() => openInExternalSystemBrowser()}
+                  className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>ক্রোম ব্রাউজারে খুলুন (Open in Chrome)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearAuthError();
+                    clearPopupBlocked();
+                    signIn().catch(() => {});
+                  }}
+                  className="w-full py-1 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 font-medium text-[11px] transition-colors cursor-pointer"
+                >
+                  পুনরায় চেষ্টা করুন
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  clearAuthError();
+                  clearPopupBlocked();
+                  signIn().catch(() => {});
+                }}
+                className="w-full py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+              >
+                পুনরায় চেষ্টা করুন
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -158,6 +209,42 @@ export const UserAuthButton: React.FC<UserAuthButtonProps> = ({ onSyncAll, onOpe
               </span>
             </button>
           )}
+
+          {/* YouTube Account Integration Item */}
+          <div className="px-2.5 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200/80 dark:border-red-900/50 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              {isYouTubeConnected && youtubeUser?.thumbnail ? (
+                <img
+                  src={youtubeUser.thumbnail}
+                  alt="YouTube"
+                  className="w-5 h-5 rounded-full object-cover border border-red-500 shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <Youtube className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+              )}
+              <div className="min-w-0">
+                <span className="font-semibold text-stone-900 dark:text-stone-100 truncate block">
+                  {isYouTubeConnected ? (youtubeUser?.title || 'ইউটিউব চ্যানেল') : 'ইউটিউব অ্যাকাউন্ট'}
+                </span>
+                <span className="text-[10px] text-stone-500 dark:text-stone-400">
+                  {isYouTubeConnected ? 'কানেক্টেড 🟢' : 'লগইন প্রয়োজন 🔴'}
+                </span>
+              </div>
+            </div>
+            {!isYouTubeConnected && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  signInWithYouTube().catch(() => {});
+                }}
+                className="px-2 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] cursor-pointer shrink-0 transition-colors"
+              >
+                লগইন
+              </button>
+            )}
+          </div>
 
           {/* Cloud Sync Status */}
           <div className="px-2.5 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60 flex items-center justify-between text-xs">

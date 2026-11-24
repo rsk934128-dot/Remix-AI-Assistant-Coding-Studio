@@ -117,7 +117,7 @@ export const HostingDiagnosticModal: React.FC<HostingDiagnosticModalProps> = ({
               port: parsedData.port || 3000,
               nodeEnv: parsedData.nodeEnv || 'development',
               time: parsedData.time || new Date().toISOString(),
-              supportedModels: parsedData.supportedModels || ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'],
+              supportedModels: parsedData.supportedModels || ['gemini-3.5-flash-lite', 'gemini-3-flash-preview'],
             });
             setHealthError(null);
             setLoadingHealth(false);

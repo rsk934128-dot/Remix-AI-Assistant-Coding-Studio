@@ -1,12 +1,11 @@
 {
-  "projectId": "excellent-epoch-zcb1c",
-  "appId": "1:922753271960:web:fff4e8f1ccd07723a7e8ed",
-  "apiKey": "AIzaSyDv7kf5zohIvM4CfNrxczjNEBiBv4N6za8",
-  "authDomain": "excellent-epoch-zcb1c.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-remixaiassistant-b8fde26a-f3be-47cd-8c36-78dae6c9c057",
-  "storageBucket": "excellent-epoch-zcb1c.firebasestorage.app",
-  "messagingSenderId": "922753271960",
+  "projectId": "project-0010e8d7-c247-4ca5-a3e",
+  "appId": "1:48345382509:web:a86cdca62c1104a4bc4964",
+  "apiKey": "AIzaSyDiIUqXxbP1GbxkIdFif8FIw_CoiOW96dU",
+  "authDomain": "project-0010e8d7-c247-4ca5-a3e.firebaseapp.com",
+  "storageBucket": "project-0010e8d7-c247-4ca5-a3e.firebasestorage.app",
+  "messagingSenderId": "48345382509",
   "measurementId": "",
-  "oAuthClientId": "922753271960-s229a1kpsf4914t15t6g7ogcachl5bu1.apps.googleusercontent.com",
+  "oAuthClientId": "48345382509-3hgknah3lot4d2sabl1a72gnjdhdrq5v.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

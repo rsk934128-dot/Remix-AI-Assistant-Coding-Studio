@@ -35,7 +35,21 @@ import {
   FolderGit2,
   Users,
   BarChart3,
-  TrendingUp
+  TrendingUp,
+  Youtube,
+  Key,
+  Bell,
+  Tv,
+  Palette,
+  Briefcase,
+  ShieldAlert,
+  CreditCard,
+  Wallet,
+  Plane,
+  Package,
+  MessagesSquare,
+  Rocket,
+  BookMarked
 } from 'lucide-react';
 import { ChatSession, AssistantMode } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -43,6 +57,7 @@ import { AppLogo } from './AppLogo';
 import { useAuth } from '../context/AuthContext';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
 import { useMiniBrowser } from '../context/MiniBrowserContext';
+import { useNotifications } from '../context/NotificationContext';
 import { UniversalTab } from './UniversalAppsConnectModal';
 
 interface SidebarProps {
@@ -58,6 +73,16 @@ interface SidebarProps {
   onOpenArchitecture: () => void;
   onOpenHostingDiagnostic?: () => void;
   onOpenCitizenServices?: () => void;
+  onOpenShurukkhaHub?: () => void;
+  onOpenPortfolioPwa?: () => void;
+  onOpenOmniSafeBrowser?: () => void;
+  onOpenPaymentGatewayHub?: () => void;
+  onOpenVideoAudioDownloader?: () => void;
+  onOpenPayHubDisbursement?: () => void;
+  onOpenUaeVisaHub?: () => void;
+  onOpenApkEditorStudio?: () => void;
+  onOpenPulseSms?: () => void;
+  onOpenGitHubBusinessHub?: () => void;
   onOpenFreelanceAgent?: () => void;
   onOpenUniversalApps?: (tab?: UniversalTab) => void;
   onOpenMetrics?: () => void;
@@ -65,9 +90,15 @@ interface SidebarProps {
   onOpenTTSSettings?: () => void;
   onOpenFounderProfile?: () => void;
   onOpenEmailComposer?: () => void;
+  onOpenEmailTemplatesLibrary?: () => void;
   onOpenShare?: (config?: { shareType?: 'app' | 'session' }) => void;
   onOpenShareReceiver?: () => void;
   onOpenRubelNetManager?: () => void;
+  onOpenYouTubeAuth?: () => void;
+  onOpenDeveloperApi?: () => void;
+  onOpenNotificationModal?: () => void;
+  onOpenMediaStudio?: () => void;
+  onOpenPictureStudio?: () => void;
   onSelectMode: (mode: AssistantMode) => void;
   currentMode: AssistantMode;
 }
@@ -85,6 +116,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenArchitecture,
   onOpenHostingDiagnostic,
   onOpenCitizenServices,
+  onOpenShurukkhaHub,
+  onOpenPortfolioPwa,
+  onOpenOmniSafeBrowser,
+  onOpenPaymentGatewayHub,
+  onOpenVideoAudioDownloader,
+  onOpenPayHubDisbursement,
+  onOpenUaeVisaHub,
+  onOpenApkEditorStudio,
+  onOpenPulseSms,
+  onOpenGitHubBusinessHub,
   onOpenFreelanceAgent,
   onOpenUniversalApps,
   onOpenMetrics,
@@ -92,25 +133,60 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenTTSSettings,
   onOpenFounderProfile,
   onOpenEmailComposer,
+  onOpenEmailTemplatesLibrary,
   onOpenShare,
   onOpenShareReceiver,
   onOpenRubelNetManager,
+  onOpenYouTubeAuth,
+  onOpenDeveloperApi,
+  onOpenNotificationModal,
+  onOpenMediaStudio,
+  onOpenPictureStudio,
   onSelectMode,
   currentMode,
 }) => {
-  const { user, signIn } = useAuth();
+  const { user, signIn, isYouTubeConnected, youtubeUser } = useAuth();
   const musicPlayer = useMusicPlayer();
   const miniBrowser = useMiniBrowser();
+  const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState<'programs' | 'history'>('programs');
   const [historySearchQuery, setHistorySearchQuery] = useState('');
 
+  const trimmedSearchQuery = historySearchQuery.trim().toLowerCase();
+
   const filteredSessions = sessions.filter((s) => {
-    if (!historySearchQuery.trim()) return true;
-    const query = historySearchQuery.toLowerCase();
-    const titleMatch = (s.title || '').toLowerCase().includes(query);
-    const messageMatch = s.messages.some((m) => (m.text || '').toLowerCase().includes(query));
+    if (!trimmedSearchQuery) return true;
+    const titleMatch = (s.title || '').toLowerCase().includes(trimmedSearchQuery);
+    const messageMatch = s.messages.some(
+      (m) =>
+        (m.text || '').toLowerCase().includes(trimmedSearchQuery) ||
+        (m.generatedImage?.prompt || '').toLowerCase().includes(trimmedSearchQuery)
+    );
     return titleMatch || messageMatch;
   });
+
+  const handleSearchQueryChange = (val: string) => {
+    setHistorySearchQuery(val);
+    if (val.trim() && activeTab !== 'history') {
+      setActiveTab('history');
+    }
+  };
+
+  const getMatchingSnippet = (s: ChatSession): string | null => {
+    if (!trimmedSearchQuery) return null;
+    const matchedMsg = s.messages.find(
+      (m) =>
+        (m.text || '').toLowerCase().includes(trimmedSearchQuery) ||
+        (m.generatedImage?.prompt || '').toLowerCase().includes(trimmedSearchQuery)
+    );
+    if (!matchedMsg) return null;
+    const content = (matchedMsg.text || matchedMsg.generatedImage?.prompt || '').replace(/\s+/g, ' ').trim();
+    const idx = content.toLowerCase().indexOf(trimmedSearchQuery);
+    if (idx === -1) return content.slice(0, 60);
+    const start = Math.max(0, idx - 18);
+    const end = Math.min(content.length, idx + trimmedSearchQuery.length + 34);
+    return (start > 0 ? '...' : '') + content.slice(start, end) + (end < content.length ? '...' : '');
+  };
 
   const pinnedSessions = filteredSessions
     .filter((s) => s.isPinned)
@@ -123,6 +199,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const renderSessionItem = (s: ChatSession) => {
     const isActive = s.id === activeSessionId;
     const isPinned = Boolean(s.isPinned);
+    const matchSnippet = getMatchingSnippet(s);
 
     return (
       <div
@@ -160,6 +237,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className="text-amber-600 dark:text-amber-400 font-semibold">• পিন করা</span>
               )}
             </div>
+            {matchSnippet && (
+              <p className="text-[10px] text-emerald-700 dark:text-emerald-400/90 truncate mt-0.5 font-normal">
+                {matchSnippet}
+              </p>
+            )}
           </div>
           {s.isGeneratingTitle && (
             <span title="শিরোনাম তৈরি হচ্ছে..." className="shrink-0 inline-flex items-center">
@@ -265,8 +347,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* New Chat Primary Action Button */}
-        <div className="p-3 pb-2 border-b border-stone-200/70 dark:border-stone-800/70 shrink-0 bg-stone-100/50 dark:bg-stone-900/50">
+        {/* New Chat Primary Action Button & Top Chat Search Bar */}
+        <div className="p-3 pb-2 border-b border-stone-200/70 dark:border-stone-800/70 shrink-0 bg-stone-100/50 dark:bg-stone-900/50 space-y-2">
           <button
             id="sidebar-new-chat-btn"
             onClick={() => {
@@ -278,6 +360,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
             <span>নতুন কথোপকথন (New Chat)</span>
           </button>
+
+          {/* Persistent Top Search Bar for Saved ChatSessions */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+            <input
+              id="sidebar-session-search-input"
+              type="search"
+              aria-label="সংরক্ষিত চ্যাট শিরোনাম বা কীওয়ার্ড দিয়ে খুঁজুন"
+              value={historySearchQuery}
+              onChange={(e) => handleSearchQueryChange(e.target.value)}
+              placeholder="চ্যাট শিরোনাম বা কীওয়ার্ড খুঁজুন..."
+              className="w-full pl-8 pr-7 py-1.5 rounded-xl text-xs bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:outline-hidden focus:border-emerald-500 text-stone-900 dark:text-stone-100 placeholder:text-stone-400"
+            />
+            {historySearchQuery && (
+              <button
+                id="sidebar-session-search-clear-btn"
+                type="button"
+                onClick={() => setHistorySearchQuery('')}
+                title="অনুসন্ধান মুছুন"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Top Segmented Tab Switcher (Programs vs History) */}
@@ -308,7 +415,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span>চ্যাট হিস্ট্রি ({sessions.length})</span>
+              <span>
+                চ্যাট হিস্ট্রি ({trimmedSearchQuery ? `${filteredSessions.length}/${sessions.length}` : sessions.length})
+              </span>
             </button>
           </div>
         </div>
@@ -452,6 +561,70 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </button>
                   )}
 
+                  {/* Email Templates Library */}
+                  {onOpenEmailTemplatesLibrary && (
+                    <button
+                      id="sidebar-email-templates-btn"
+                      onClick={() => {
+                        onOpenEmailTemplatesLibrary();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-transparent hover:from-amber-500/25 border border-amber-500/30 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <BookMarked className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+                              ইমেইল টেমপ্লেট লাইব্রেরি
+                            </p>
+                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-amber-600 text-white uppercase">
+                              Library
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 truncate">
+                            Marketing, Collaboration ও Follow-up
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* GitHub Business, Marketing & Auto-Gmail Studio */}
+                  {onOpenGitHubBusinessHub && (
+                    <button
+                      id="sidebar-github-business-btn"
+                      onClick={() => {
+                        onOpenGitHubBusinessHub();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-indigo-500/15 hover:from-emerald-500/25 hover:to-indigo-500/25 border border-emerald-500/40 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-indigo-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Rocket className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+                              GitHub বিজনেস ও অটো-Gmail
+                            </p>
+                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-600 text-white uppercase">
+                              AI Growth
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-emerald-700 dark:text-emerald-400 truncate">
+                            বিজনেস আইডিয়া, SMS, সরাসরি Gmail ও মার্কেটিং
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
                   {/* GitHub Flagship Hub (rsk934128-dot) */}
                   {onOpenUniversalApps && (
                     <button
@@ -566,6 +739,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </button>
                   )}
 
+                  {/* Developer API SaaS Platform */}
+                  {onOpenDeveloperApi && (
+                    <button
+                      id="sidebar-prog-developer-api"
+                      onClick={() => {
+                        onOpenDeveloperApi();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-blue-50/90 to-indigo-50/90 hover:from-blue-100 hover:to-indigo-100 dark:from-blue-950/40 dark:to-indigo-950/40 dark:hover:from-blue-950/70 dark:hover:to-indigo-950/70 border border-blue-200/80 dark:border-blue-800/60 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Key className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-blue-950 dark:text-blue-200 truncate">
+                              ডেভেলপার API সার্ভিস (SaaS)
+                            </p>
+                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-blue-600 text-white uppercase">
+                              API
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-blue-700/90 dark:text-blue-400/90 truncate">
+                            API Key, রেট লিমিট ও থার্ড-পার্টি ডক্স
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
                   {/* Citizen Services */}
                   {onOpenCitizenServices && (
                     <button
@@ -652,6 +857,107 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </button>
                   )}
 
+                  {/* Push & In-App Notification Center */}
+                  {onOpenNotificationModal && (
+                    <button
+                      id="sidebar-prog-notifications"
+                      onClick={() => {
+                        onOpenNotificationModal();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-amber-50/80 hover:bg-amber-100/90 dark:bg-amber-950/30 dark:hover:bg-amber-950/60 border border-amber-300/50 dark:border-amber-800/50 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="relative w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Bell className="w-4 h-4" />
+                          {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white dark:border-stone-900 animate-pulse">
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-amber-950 dark:text-amber-200 truncate">
+                              নোটিফিকেশন ও অ্যালার্ট হাব
+                            </p>
+                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-amber-500 text-white uppercase">
+                              Push
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-amber-700/90 dark:text-amber-400/90 truncate">
+                            পুশ নোটিফিকেশন, রিমাইন্ডার ও চিম সাউন্ড
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* Universal Media Player & Image Studio */}
+                  {onOpenMediaStudio && (
+                    <button
+                      id="sidebar-prog-media-studio"
+                      onClick={() => {
+                        onOpenMediaStudio();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-cyan-50/80 hover:bg-cyan-100/90 dark:bg-cyan-950/30 dark:hover:bg-cyan-950/60 border border-cyan-300/50 dark:border-cyan-800/50 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-cyan-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Tv className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-cyan-950 dark:text-cyan-200 truncate">
+                              মিডিয়া প্লেয়ার ও ইমেজ স্টুডিও
+                            </p>
+                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-cyan-600 text-white uppercase">
+                              Media
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-cyan-700/90 dark:text-cyan-400/90 truncate">
+                            যেকোনো ভিডিও প্লেব্যাক ও ইমেজ ভিউয়ার
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* AI Picture Studio & Art Generator */}
+                  {onOpenPictureStudio && (
+                    <button
+                      id="sidebar-prog-picture-studio"
+                      onClick={() => {
+                        onOpenPictureStudio();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-purple-50/80 hover:bg-purple-100/90 dark:bg-purple-950/30 dark:hover:bg-purple-950/60 border border-purple-300/50 dark:border-purple-800/50 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Palette className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-purple-950 dark:text-purple-200 truncate">
+                              AI ছবি ও আর্ট স্টুডিও
+                            </p>
+                            <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-purple-600 text-white uppercase">
+                              Image AI
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-purple-700/90 dark:text-purple-400/90 truncate">
+                            সুন্দর ছবি তৈরি ও তাৎক্ষণিক ডাউনলোড
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
                   {/* Architecture Blueprint */}
                   <button
                     id="sidebar-prog-architecture"
@@ -711,7 +1017,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       if (musicPlayer.currentTrack) {
                         musicPlayer.expandPlayer();
                       } else {
-                        musicPlayer.playVideoId('jfKfPfyJRdk', 'Lofi Girl - Chill Beats to Code & Study');
+                        musicPlayer.playVideoId('maGEkZUFlKU', 'Top 10 Rabindra Sangeet রবীন্দ্র সংগীত | রবিঠাকুরের সেরা গান');
                       }
                       if (window.innerWidth < 768) onClose();
                     }}
@@ -737,6 +1043,334 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                     <ChevronRight className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
                   </button>
+
+                  {/* YouTube Authentication & Personal Channel Hub */}
+                  {onOpenYouTubeAuth && (
+                    <button
+                      id="sidebar-prog-youtube-auth"
+                      onClick={() => {
+                        onOpenYouTubeAuth();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-red-600/15 via-rose-500/10 to-transparent hover:from-red-600/25 border border-red-500/30 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Youtube className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+                              ইউটিউব অথেন্টিকেশন ও চ্যানেল
+                            </p>
+                            {isYouTubeConnected ? (
+                              <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-emerald-600 text-white uppercase">
+                                কানেক্টেড 🟢
+                              </span>
+                            ) : (
+                              <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-red-600 text-white uppercase">
+                                লগইন
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-red-700 dark:text-red-400 truncate">
+                            {isYouTubeConnected && youtubeUser?.title
+                              ? `${youtubeUser.title} • প্লেলিস্ট ও চ্যানেল`
+                              : 'গুগল অ্যাকাউন্টে সাইন-ইন ও নিজস্ব প্লেলিস্ট'}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* Shurukkha Hub Dashboard */}
+                  {onOpenShurukkhaHub && (
+                    <button
+                      id="sidebar-prog-shurukkha-hub"
+                      onClick={() => {
+                        onOpenShurukkhaHub();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-cyan-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 dark:from-emerald-950/40 dark:to-cyan-950/40 border border-emerald-400/40 dark:border-emerald-600/40 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-cyan-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <ShieldCheck className="w-4 h-4 text-emerald-200" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-emerald-950 dark:text-emerald-200 truncate">
+                              সুরক্ষা হাব ড্যাশবোর্ড
+                            </p>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-600 text-white animate-pulse">
+                              LIVE
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-emerald-700 dark:text-emerald-400 truncate">
+                            ইমার্জেন্সি SOS ও নাগরিক সুরক্ষা হাব
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* Sheikh Farid Portfolio PWA & Projects */}
+                  {onOpenPortfolioPwa && (
+                    <button
+                      id="sidebar-prog-portfolio-pwa"
+                      onClick={() => {
+                        onOpenPortfolioPwa();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-sky-500/15 via-blue-500/10 to-indigo-500/15 hover:from-sky-500/25 hover:to-indigo-500/25 dark:from-sky-950/40 dark:to-indigo-950/40 border border-sky-400/40 dark:border-sky-600/40 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-600 to-indigo-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Briefcase className="w-4 h-4 text-sky-200" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-sky-950 dark:text-sky-200 truncate">
+                              Portfolio PWA ও প্রজেক্টস
+                            </p>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-sky-600 text-white">
+                              #projects
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-sky-700 dark:text-sky-400 truncate">
+                            শেখ ফরিদের পোর্টফোলিও ও প্রজেক্ট শোকেস
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* OnionShield — OmniSafe Privacy Browser */}
+                  {onOpenOmniSafeBrowser && (
+                    <button
+                      id="sidebar-prog-omnisafe-browser"
+                      onClick={() => {
+                        onOpenOmniSafeBrowser();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-violet-500/15 via-purple-500/10 to-indigo-500/15 hover:from-violet-500/25 hover:to-indigo-500/25 dark:from-violet-950/40 dark:to-indigo-950/40 border border-violet-400/40 dark:border-violet-600/40 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <ShieldAlert className="w-4 h-4 text-violet-200" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-violet-950 dark:text-violet-200 truncate">
+                              OnionShield প্রাইভেসি ব্রাউজার
+                            </p>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-violet-600 text-white">
+                              APK
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-violet-700 dark:text-violet-400 truncate">
+                            OmniSafe • ট্র্যাকার ব্লক ও প্রাইভেসি অডিট
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* Stripe & Gmail Payment Gateway Hub */}
+                  {onOpenPaymentGatewayHub && (
+                    <button
+                      id="sidebar-prog-payment-gateway-hub"
+                      onClick={() => {
+                        onOpenPaymentGatewayHub();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-indigo-500/15 via-violet-500/10 to-emerald-500/15 hover:from-indigo-500/25 hover:to-emerald-500/25 dark:from-indigo-950/40 dark:to-emerald-950/40 border border-indigo-400/40 dark:border-indigo-600/40 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-emerald-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <CreditCard className="w-4 h-4 text-indigo-100" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-indigo-950 dark:text-indigo-200 truncate">
+                              Stripe &amp; Gmail পেমেন্ট হাব
+                            </p>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-indigo-600 text-white">
+                              PAY
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-indigo-700 dark:text-indigo-400 truncate">
+                            পেমেন্ট সিমুলেটর, ওয়েবহুক ও রিসিট হাব
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* Universal Video & Audio Downloader */}
+                  {onOpenVideoAudioDownloader && (
+                    <button
+                      id="sidebar-prog-video-audio-downloader"
+                      onClick={() => {
+                        onOpenVideoAudioDownloader();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-rose-500/15 via-pink-500/10 to-orange-500/15 hover:from-rose-500/25 hover:to-orange-500/25 dark:from-rose-950/40 dark:to-orange-950/40 border border-rose-400/40 dark:border-rose-600/40 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-600 to-orange-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Download className="w-4 h-4 text-rose-100" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-rose-950 dark:text-rose-200 truncate">
+                              Video &amp; Audio ডাউনলোডার
+                            </p>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-600 text-white">
+                              MP3/4
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-rose-700 dark:text-rose-400 truncate">
+                            YouTube, FB, IG • HD MP4 ও অডিও
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* PayHub Gateway & Gmail Disbursement PWA */}
+                  {onOpenPayHubDisbursement && (
+                    <button
+                      id="sidebar-prog-payhub-disbursement"
+                      onClick={() => {
+                        onOpenPayHubDisbursement();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-teal-500/15 via-emerald-500/10 to-cyan-500/15 hover:from-teal-500/25 hover:to-cyan-500/25 dark:from-teal-950/40 dark:to-cyan-950/40 border border-teal-400/40 dark:border-teal-600/40 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-600 to-cyan-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Wallet className="w-4 h-4 text-teal-100" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-teal-950 dark:text-teal-200 truncate">
+                              PayHub ডিসবার্সমেন্ট PWA
+                            </p>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-teal-600 text-white">
+                              B2C
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-teal-700 dark:text-teal-400 truncate">
+                            Stripe, bKash, Nagad ও জিমেইল রিসিট
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* UAE & Dubai Visa AI Hub */}
+                  {onOpenUaeVisaHub && (
+                    <button
+                      id="sidebar-prog-uae-visa-hub"
+                      onClick={() => {
+                        onOpenUaeVisaHub();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-sky-500/10 to-blue-500/15 hover:from-amber-500/25 hover:to-blue-500/25 dark:from-amber-950/40 dark:to-sky-950/40 border border-amber-400/40 dark:border-amber-600/40 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 via-sky-600 to-blue-700 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Plane className="w-4 h-4 text-amber-100" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-amber-950 dark:text-amber-200 truncate">
+                              UAE &amp; Dubai Visa AI Hub
+                            </p>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-600 text-white">
+                              OCR
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400 truncate">
+                            পাসপোর্ট OCR, ফটো ও ভিসা অডিট
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* APK Editor & Studio */}
+                  {onOpenApkEditorStudio && (
+                    <button
+                      id="sidebar-prog-apk-editor-studio"
+                      onClick={() => {
+                        onOpenApkEditorStudio();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-lime-500/15 via-emerald-500/10 to-cyan-500/15 hover:from-lime-500/25 hover:to-cyan-500/25 dark:from-lime-950/40 dark:to-emerald-950/40 border border-lime-400/40 dark:border-lime-600/40 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-lime-500 via-emerald-600 to-cyan-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <Package className="w-4 h-4 text-lime-100" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-lime-950 dark:text-lime-200 truncate">
+                              APK Editor &amp; Studio
+                            </p>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-600 text-white">
+                              APK
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-emerald-700 dark:text-emerald-400 truncate">
+                            Smali/XML এডিটর ও Keystore সাইনিং
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {/* Pulse SMS Web Companion */}
+                  {onOpenPulseSms && (
+                    <button
+                      id="sidebar-prog-pulse-sms"
+                      onClick={() => {
+                        onOpenPulseSms();
+                        if (window.innerWidth < 768) onClose();
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-blue-500/15 via-sky-500/10 to-indigo-500/15 hover:from-blue-500/25 hover:to-indigo-500/25 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-400/40 dark:border-blue-600/40 text-left transition-all group cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 via-sky-500 to-indigo-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <MessagesSquare className="w-4 h-4 text-blue-100" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold text-blue-950 dark:text-blue-200 truncate">
+                              Pulse SMS (ওয়েব)
+                            </p>
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-blue-600 text-white">
+                              SMS
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-blue-700 dark:text-blue-400 truncate">
+                            রিয়েল-টাইম এসএমএস ও ওটিপি সিঙ্ক
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
 
                   {/* Mini Google Browser */}
                   <button
@@ -895,32 +1529,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ) : (
             /* =================== TAB 2: CHAT SESSIONS HISTORY =================== */
             <div className="space-y-2.5">
-              {/* Search filter for history */}
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
-                <input
-                  type="text"
-                  value={historySearchQuery}
-                  onChange={(e) => setHistorySearchQuery(e.target.value)}
-                  placeholder="পূর্ববর্তী চ্যাট খুঁজুন..."
-                  className="w-full pl-8 pr-2.5 py-1.5 rounded-xl text-xs bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:outline-hidden focus:border-emerald-500 text-stone-900 dark:text-stone-100"
-                />
-                {historySearchQuery && (
+              {/* Active Search Result Count Banner */}
+              {trimmedSearchQuery && (
+                <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/60 text-[11px] text-emerald-800 dark:text-emerald-300">
+                  <span className="truncate">
+                    &ldquo;{historySearchQuery.trim()}&rdquo; — {filteredSessions.length}টি ফলাফল
+                  </span>
                   <button
                     type="button"
                     onClick={() => setHistorySearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                    className="ml-2 shrink-0 font-semibold hover:underline cursor-pointer"
                   >
-                    <X className="w-3 h-3" />
+                    সব দেখুন
                   </button>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Sessions List */}
               <div className="space-y-3">
                 {filteredSessions.length === 0 ? (
                   <div className="p-6 text-center text-xs text-stone-500 dark:text-stone-400">
-                    {historySearchQuery ? 'কোনো চ্যাট খুঁজে পাওয়া যায়নি।' : 'কোনো পূর্ববর্তী চ্যাট নেই। নতুন চ্যাট শুরু করুন!'}
+                    {trimmedSearchQuery ? 'কোনো চ্যাট খুঁজে পাওয়া যায়নি।' : 'কোনো পূর্ববর্তী চ্যাট নেই। নতুন চ্যাট শুরু করুন!'}
                   </div>
                 ) : (
                   <>

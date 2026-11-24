@@ -6,8 +6,11 @@
  * 3. Resilient Web Speech API fallback with utterance garbage-collection protection
  */
 
+export type TTSLanguage = 'auto' | 'bn' | 'en';
+
 export interface TTSOptions {
-  speed?: number; // 0.8, 1.0, 1.25, 1.5
+  speed?: number; // 0.5 - 2.0
+  language?: TTSLanguage;
   preferredMode?: 'natural' | 'browser';
   voiceURI?: string;
   onChunkStart?: (index: number, total: number, chunkText: string) => void;
@@ -271,9 +274,16 @@ export class ContinuousTTSPlayer {
     this.playCurrentChunk();
   }
 
-  private getAudioUrl(chunk: string): string {
+  private resolveLanguage(chunk: string): 'bn' | 'en' {
+    if (this.options.language === 'bn' || this.options.language === 'en') {
+      return this.options.language;
+    }
     const hasBengali = /[\u0980-\u09FF]/.test(chunk);
-    const lang = hasBengali ? 'bn' : 'en';
+    return hasBengali ? 'bn' : 'en';
+  }
+
+  private getAudioUrl(chunk: string): string {
+    const lang = this.resolveLanguage(chunk);
     return `/api/tts?text=${encodeURIComponent(chunk)}&lang=${lang}`;
   }
 
@@ -322,6 +332,9 @@ export class ContinuousTTSPlayer {
 
       audio.src = url;
       audio.playbackRate = this.speed;
+      if ('preservesPitch' in audio) {
+        (audio as HTMLAudioElement & { preservesPitch: boolean }).preservesPitch = true;
+      }
 
       // Preload the next chunk immediately for seamless zero-gap transitions
       this.preloadNextChunk(this.currentIndex + 1);
@@ -374,8 +387,8 @@ export class ContinuousTTSPlayer {
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(chunkText);
-      // Calm, comfortable reading pace for Bengali
-      utterance.rate = Math.max(0.75, Math.min(this.speed, 1.2));
+      // Full user-configured reading speed (0.5x - 2.0x)
+      utterance.rate = Math.max(0.5, Math.min(this.speed, 2.0));
       utterance.pitch = 1.0;
 
       // Retain strong reference to prevent GC bug in Chromium
@@ -384,8 +397,8 @@ export class ContinuousTTSPlayer {
         (window as any).__activeSpeechUtterance = utterance;
       }
 
-      // Voice selection
-      const hasBengali = /[\u0980-\u09FF]/.test(chunkText);
+      // Voice & language selection
+      const targetLang = this.resolveLanguage(chunkText);
       const voices = window.speechSynthesis.getVoices() || [];
 
       if (this.options.voiceURI && this.options.voiceURI !== 'auto') {
@@ -393,8 +406,10 @@ export class ContinuousTTSPlayer {
         if (found) {
           utterance.voice = found;
           utterance.lang = found.lang;
+        } else {
+          utterance.lang = targetLang === 'bn' ? 'bn-BD' : 'en-US';
         }
-      } else if (hasBengali) {
+      } else if (targetLang === 'bn') {
         utterance.lang = 'bn-BD';
         const bnVoice = voices.find(
           (v) =>
